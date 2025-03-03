@@ -13,6 +13,13 @@
     --color-rci-Azul2: #193F5B;
     --color-rci-Azul3: #112635;
     --color-rci-AzulFundo: #060C18;
+    --spacing-sm: 8px;
+    --spacing-md: 16px;
+    --spacing-lg: 24px;
+    --border-radius-sm: 4px;
+    --border-radius-md: 8px;
+    --border-radius-lg: 12px;
+    --transition-speed: 0.3s;
 }
 
 /* Preview Section - versão unificada */
@@ -1001,6 +1008,25 @@ h1, h2, h3, .btn {
         opacity: 1;
         transform: translateY(0);
     }
+}
+
+/* Criar mixins utilitários usando classes */
+.flex-center {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.glass-effect {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+
+/* Simplificar seletores repetitivos */
+.btn, .form-control, .card {
+    border-radius: var(--border-radius-md);
+    transition: all var(--transition-speed) ease;
 }
 
 /* ... outros estilos específicos ... */

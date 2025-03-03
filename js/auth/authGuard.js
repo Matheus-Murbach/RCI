@@ -19,33 +19,25 @@ class AuthGuard {
     }
 
     isUserActive() {
-        const activeId = localStorage.getItem('activeUserId');
-        const token = localStorage.getItem('userToken');
-        const currentUser = localStorage.getItem('currentUser');
-        
-        console.log('Verificação detalhada de usuário ativo:', {
-            activeId,
-            token,
-            currentUser,
-            activeIdInMemory: this.activeUserId,
-            hasToken: !!token,
-            hasCurrentUser: !!currentUser
-        });
+        const authData = {
+            activeId: localStorage.getItem('activeUserId'),
+            token: localStorage.getItem('userToken'),
+            currentUser: localStorage.getItem('currentUser')
+        };
 
-        // Se não tiver token, tentar recuperar dos dados do usuário
-        if (!token && currentUser) {
+        if (!authData.token && authData.currentUser) {
             try {
-                const userData = JSON.parse(currentUser);
+                const userData = JSON.parse(authData.currentUser);
                 if (userData.token) {
                     localStorage.setItem('userToken', userData.token);
                     return true;
                 }
             } catch (error) {
-                console.error('Erro ao parsear dados do usuário:', error);
+                console.error('❌ Erro ao parsear dados:', error);
             }
         }
 
-        return !!(activeId && token);
+        return !!(authData.activeId && authData.token);
     }
 
     getActiveUserId() {
@@ -75,6 +67,26 @@ class AuthGuard {
         } catch (error) {
             console.error('Erro na verificação:', error);
             return false;
+        }
+    }
+
+    async authenticate(credentials, isRegister = false) {
+        try {
+            const endpoint = isRegister ? 'register' : 'login';
+            const result = await this.db.query(`users/${endpoint}`, {
+                method: 'POST',
+                body: JSON.stringify(credentials)
+            });
+
+            if (result.success) {
+                this.setActiveUser(result.user.id);
+                localStorage.setItem('userToken', result.user.token);
+                this.db.setCurrentUser(result.user);
+                return { success: true, user: result.user };
+            }
+            return { success: false, message: result.error };
+        } catch (error) {
+            return { success: false, message: error.message };
         }
     }
 

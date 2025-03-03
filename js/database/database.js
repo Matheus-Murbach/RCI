@@ -51,6 +51,38 @@ export class Database {
         }
     }
 
+    async request(endpoint, options = {}) {
+        await this.ensureApiUrl();
+        
+        const defaultOptions = {
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
+        };
+
+        const token = localStorage.getItem('userToken');
+        if (token) {
+            defaultOptions.headers['Authorization'] = `Bearer ${token}`;
+        }
+
+        try {
+            const response = await fetch(
+                `${this.apiUrl}/api/${endpoint}`,
+                { ...defaultOptions, ...options }
+            );
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('❌ Erro na requisição:', error);
+            throw error;
+        }
+    }
+
     async query(endpoint, options = {}) {
         await this.ensureApiUrl();
 
@@ -295,6 +327,25 @@ export class Database {
             console.error('❌ Erro ao deletar personagem:', error);
             return { error: error.message };
         }
+    }
+
+    async characterOperation(operation, data) {
+        const operations = {
+            get: (id) => this.request(`characters/${id}`),
+            create: (data) => this.request('characters', {
+                method: 'POST',
+                body: JSON.stringify(data)
+            }),
+            update: (id, data) => this.request(`characters/${id}`, {
+                method: 'PUT',
+                body: JSON.stringify(data)
+            }),
+            delete: (id) => this.request(`characters/${id}`, {
+                method: 'DELETE'
+            })
+        };
+
+        return operations[operation](data);
     }
 
     getCurrentUser() {

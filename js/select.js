@@ -47,7 +47,6 @@ class CharacterSelector {
 
         } catch (error) {
             console.error('❌ Erro fatal:', error);
-            alert(`Erro fatal: ${error.message}\nO aplicativo será reiniciado.`);
             setTimeout(() => window.location.reload(), 3000);
         }
     }
@@ -60,7 +59,6 @@ class CharacterSelector {
             return true;
         } catch (error) {
             console.error('❌ Erro ao verificar banco de dados:', error);
-            alert('Erro na conexão com o banco de dados.\nTentando reconectar...');
             throw error;
         }
     }
@@ -73,11 +71,9 @@ class CharacterSelector {
         };
 
         console.log('🔐 Status da autenticação:', authStatus);
-        alert(`Status da autenticação:\nAtivo: ${authStatus.isActive}\nID: ${authStatus.userId}\nToken: ${authStatus.token}`);
 
         if (!authStatus.isActive || !authStatus.token) {
             console.warn('⚠️ Usuário não autenticado');
-            alert('Usuário não autenticado. Redirecionando para login...');
             setTimeout(() => window.location.replace('/pages/login.html'), 2000);
             return false;
         }
@@ -88,9 +84,7 @@ class CharacterSelector {
     async loadAndDisplayCharacters() {
         const userId = authGuard.getActiveUserId();
         if (!userId) {
-            const msg = '❌ ID do usuário não encontrado';
-            console.error(msg);
-            alert(msg);
+            console.error('❌ ID do usuário não encontrado');
             setTimeout(() => window.location.replace('/pages/login.html'), 2000);
             return;
         }
@@ -102,9 +96,7 @@ class CharacterSelector {
             console.log('📥 Personagens recebidos:', freshCharacters);
 
             if (!Array.isArray(freshCharacters)) {
-                const msg = '❌ Resposta inválida do banco de dados';
-                console.error(msg);
-                alert(msg);
+                console.error('❌ Resposta inválida do banco de dados');
                 this.characters = [];
             } else {
                 // Atualiza a lista local com os dados mais recentes
@@ -112,9 +104,7 @@ class CharacterSelector {
             }
 
             if (this.characters.length === 0) {
-                const msg = '⚠️ Nenhum personagem encontrado';
-                console.log(msg);
-                alert(`${msg}\nVocê será redirecionado para criar um novo personagem.`);
+                console.log('⚠️ Nenhum personagem encontrado');
                 setTimeout(() => {
                     console.log('🔄 Redirecionando para criação de personagem...');
                     window.location.replace('create.html');
@@ -126,9 +116,7 @@ class CharacterSelector {
             this.displayCharacters();
 
         } catch (error) {
-            const msg = `❌ Erro ao carregar personagens: ${error.message}`;
-            console.error(msg, error);
-            alert(msg);
+            console.error('❌ Erro ao carregar personagens:', error);
             this.handleError(error);
         }
     }
@@ -316,11 +304,9 @@ class CharacterSelector {
             }
 
             console.log('✅ Personagem deletado com sucesso');
-            alert('Personagem deletado com sucesso!');
 
         } catch (error) {
             console.error('❌ Erro ao deletar personagem:', error);
-            alert(`Erro ao deletar personagem: ${error.message}`);
         }
     }
 
@@ -336,7 +322,6 @@ class CharacterSelector {
 
     handleError(error) {
         console.error('Erro:', error);
-        alert(`Erro crítico: ${error.message}\nVoltando para a tela de login...`);
         setTimeout(() => {
             authGuard.logout();
         }, 3000);
@@ -355,12 +340,10 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     
     console.log('📋 Estado inicial:', initialState);
-    alert(`Estado inicial:\nUsuário: ${initialState.localStorage.activeUserId}\nToken: ${initialState.localStorage.userToken}`);
     
     const selector = new CharacterSelector();
     selector.initialize().catch(error => {
         console.error('❌ Erro fatal:', error);
-        alert(`Erro fatal: ${error.message}\nVerifique o console para mais detalhes.`);
         setTimeout(() => selector.handleError(error), 2000);
     });
 });
