@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RPG Tabletop - Selecionar Personagem</title>
+    <link rel="icon" type="image/x-icon" href="../favicon.ico">
+    <link rel="stylesheet" href="../css/styles.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+</head>
+<body>
+    <div class="screen">
+        <div class="character-list-section">
+            <h2>Seus Personagens</h2>
+            <div id="characterList"></div>
+            <div class="buttons-group">
+                <button id="newCharacterButton">Criar Novo Personagem</button>
+                <button id="playButton" disabled>Jogar</button>
+            </div>
+        </div>
+        
+        <div class="preview-section">
+            <canvas id="characterPreview"></canvas>
+            <div class="control-buttons">
+                <button id="toggleOrbit" class="orbit-toggle">
+                    <span class="material-icons">sync</span>
+                </button>
+                <button id="logoutButton" class="logout-toggle">
+                    <span class="material-icons">logout</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="deleteModal" class="modal hidden">
+        <div class="modal-content">
+            <h3>Confirmar Exclusão</h3>
+            <p>Para excluir "<span id="charNameToDelete"></span>", digite o nome do personagem:</p>
+            <input type="text" id="confirmDeleteInput" placeholder="Nome do personagem">
+            <div class="modal-buttons">
+                <button id="confirmDelete">Excluir</button>
+                <button id="cancelDelete">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts em ordem correta -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="../js/LODController.js"></script>
+    <script src="../js/gameState.js" type="module"></script>
+    <script src="../js/spaceScene.js" type="module"></script>
+    <script src="../js/character.js" type="module"></script>
+    <script src="../js/select.js" type="module"></script>
+</body>
+</html>

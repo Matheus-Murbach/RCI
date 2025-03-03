@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RPG Tabletop - Criar Personagem</title>
+    <link rel="icon" type="image/x-icon" href="../favicon.ico">
+    <link rel="stylesheet" href="../css/styles.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+</head>
+<body>
+    <div id="characterCreation" class="screen">
+        <div class="controls-section">
+            <h2>Criar Personagem</h2>
+            
+            <!-- Seção de informações básicas -->
+            <div class="basic-info">
+                <input type="text" id="charName" placeholder="Nome do Personagem">
+            </div>
+
+            <!-- Seção de cores -->
+            <div class="color-section">
+                <h3>Cores do Personagem</h3>
+                <div class="color-grid">
+                    <div class="color-item">
+                        <label for="mainColor">Cor Principal</label>
+                        <input type="color" id="mainColor" value="#FF0000">
+                    </div>
+                    <div class="color-item">
+                        <label for="skinColor">Cor da Pele</label>
+                        <input type="color" id="skinColor" value="#FFA07A">
+                    </div>
+                    <div class="color-item">
+                        <label for="accentColor">Cor Destaque</label>
+                        <input type="color" id="accentColor" value="#0000FF">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Seção de forma -->
+            <div class="shape-section">
+                <h3>Forma do Personagem</h3>
+                <div class="radius-control">
+                    <div id="radiusSlider2D">
+                        <div id="radiusHandle"></div>
+                    </div>
+                    <div class="radius-labels">
+                        <span>Superior: <span id="topRadiusValue" class="radius-value">0.75</span></span>
+                        <span>Inferior: <span id="bottomRadiusValue" class="radius-value">0.75</span></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Seção de equipamentos -->
+            <div class="equipment-section">
+                <h3>Equipamentos</h3>
+                <div class="equipment-container">
+                    <div class="available-items">
+                        <h4>Itens Disponíveis</h4>
+                        <div id="availableItems" class="items-grid"></div>
+                    </div>
+                    
+                    <div class="equipped-items">
+                        <h4>Itens Equipados</h4>
+                        <div class="equipment-slots">
+                            <div class="equipment-slot" data-slot="head">
+                                <span class="slot-label">Cabeça</span>
+                            </div>
+                            <div class="equipment-slot" data-slot="leftHand">
+                                <span class="slot-label">Mão Esquerda</span>
+                            </div>
+                            <div class="equipment-slot" data-slot="rightHand">
+                                <span class="slot-label">Mão Direita</span>
+                            </div>
+                            <div class="equipment-slot" data-slot="back">
+                                <span class="slot-label">Costas</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Botões de ação -->
+            <div class="buttons-group">
+                <button id="saveCharacter" class="btn-primary">
+                    <span class="material-icons">save</span>
+                    Salvar Personagem
+                </button>
+                <button id="backButton" class="btn-secondary">
+                    <span class="material-icons">arrow_back</span>
+                    Voltar
+                </button>
+            </div>
+        </div>
+
+        <div class="preview-section">
+            <canvas id="characterPreview"></canvas>
+            <div class="control-buttons">
+                <button id="toggleOrbit" class="orbit-toggle">
+                    <span class="material-icons">sync</span>
+                </button>
+                <button id="logoutButton" class="logout-toggle">
+                    <span class="material-icons">logout</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts em ordem correta -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="../js/LODController.js"></script>
+    <script src="../js/gameState.js" type="module"></script>
+    <script src="../js/spaceScene.js" type="module"></script>
+    <script src="../js/character.js" type="module"></script>
+    <script src="../js/cameraController.js" type="module"></script>
+    <script src="../js/create.js" type="module"></script>
+</body>
+</html>

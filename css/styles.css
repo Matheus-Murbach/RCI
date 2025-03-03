@@ -1,0 +1,1006 @@
+/* Variáveis globais */
+:root {
+    --font-primary: 'Poppins', sans-serif;
+    --color-primary: var(--color-rci-Azul1);
+    --color-success: #4CAF50;
+    --color-error: #f44336;
+    --color-info: var(--color-rci-Azul1);
+    --bg-overlay: rgba(255, 255, 255, 0.1);
+    --text-primary: white;
+    --text-secondary: var(--color-rci-Azul1);
+    --text-light: rgba(255, 255, 255, 0.6);
+    --color-rci-Azul1: #41C0E3;
+    --color-rci-Azul2: #193F5B;
+    --color-rci-Azul3: #112635;
+    --color-rci-AzulFundo: #060C18;
+}
+
+/* Preview Section - versão unificada */
+.preview-section {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+}
+
+#characterPreview {
+    width: 100%;
+    height: 100%;
+    background-color: #2a2a2a;
+    display: block;
+}
+
+/* Reset e configurações globais */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: var(--font-primary);
+    user-select: none;
+    color: var(--text-primary);
+}
+
+input, textarea {
+    user-select: text;
+}
+
+/* Remover estilo antigo do .screen e adicionar novo estilo unificado */
+.screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    background: linear-gradient(135deg, var(--color-rci-Azul3) 0%, var(--color-rci-AzulFundo) 100%);
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+/* Botão de órbita */
+.orbit-toggle {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+.orbit-toggle:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.orbit-toggle.active {
+    background: rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.4);
+}
+
+.orbit-toggle .material-icons {
+    color: white;
+}
+
+/* Grupo de botões de controle */
+.control-buttons {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    display: flex;
+    gap: 10px;
+    z-index: 1000;
+}
+
+/* Estilo base para botões de controle */
+.control-buttons button {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+.control-buttons button:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateY(-2px);
+}
+
+/* Estilo específico para botão de logout */
+.logout-toggle {
+    background-color: rgba(244, 67, 54, 0.2) !important;
+}
+
+.logout-toggle:hover {
+    background-color: rgba(244, 67, 54, 0.3) !important;
+}
+
+.logout-toggle .material-icons {
+    color: white;
+}
+
+/* Estado ativo para controle orbital */
+.orbit-toggle.active {
+    background: var(--color-rci-Azul1) !important;
+}
+
+/* Unificar estilos das seções laterais */
+.character-list-section,
+.controls-section {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 400px;
+    height: 100vh;
+    margin: 0;
+    padding: 40px 30px;
+    background-color: rgba(25, 63, 91, 0.2);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-radius: 0;
+    box-shadow: 0 0 32px rgba(0, 0, 0, 0.3);
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    z-index: 10;
+    overflow-y: auto;
+}
+
+.character-list-section::-webkit-scrollbar,
+.controls-section::-webkit-scrollbar {
+    width: 8px;
+}
+
+.character-list-section::-webkit-scrollbar-track,
+.controls-section::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.character-list-section::-webkit-scrollbar-thumb,
+.controls-section::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 4px;
+}
+
+/* Estilo unificado para títulos nas seções */
+.character-list-section h2,
+.controls-section h2 {
+    font-weight: 700;
+    font-size: 2em;
+    margin: 0 0 20px;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-primary);
+}
+
+/* Estilo unificado para inputs */
+input[type="text"],
+input[type="color"] {
+    width: 100%;
+    height: 52px;
+    padding: 0 20px;
+    border: 1px solid var(--color-rci-Azul2);
+    border-radius: 8px;
+    background-color: rgba(17, 38, 53, 0.3);
+    color: var(--text-primary);
+    font-size: 16px;
+    transition: all 0.3s ease;
+}
+
+input[type="text"]:focus,
+input[type="color"]:focus {
+    outline: none;
+    background-color: rgba(255, 255, 255, 0.2);
+    box-shadow: 0 0 0 2px rgba(65, 192, 227, 0.3);
+    border-color: var(--color-rci-Azul1);
+}
+
+/* Estilo unificado para botões */
+.buttons-group {
+    margin-top: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.buttons-group button {
+    min-height: 52px;
+    padding: 0 30px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background-color: var(--color-rci-Azul1);
+    color: var(--color-rci-AzulFundo);
+}
+
+.buttons-group button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* Estilo para lista de personagens */
+.character-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 15px;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    margin-bottom: 10px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.character-option:hover {
+    background-color: rgba(65, 192, 227, 0.2);
+    transform: translateX(5px);
+}
+
+.character-option.selected {
+    background-color: var(--color-rci-Azul1);
+    color: var(--color-rci-AzulFundo);
+}
+
+/* Estilos da tela de seleção */
+.character-list-section {
+    max-height: none;
+    top: 0;
+    left: 0;
+    transform: none;
+}
+
+/* Lista de personagens */
+.character-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 15px;
+    background-color: #f8f8f8;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.character-item:hover {
+    background-color: #eaeaea;
+    transform: translateX(5px);
+}
+
+.character-item.selected {
+    background-color: #4a90e2;
+    color: white;
+    font-weight: bold;
+}
+
+/* Estilos da tela de criação */
+.controls-section {
+    max-height: none;
+    top: 0;
+    left: 0;
+    transform: none;
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+    padding: 30px;
+}
+
+.color-section, .shape-section, .equipment-section {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 20px;
+}
+
+.color-section h3, .shape-section h3, .equipment-section h3 {
+    font-size: 1.2em;
+    margin-bottom: 15px;
+    color: var(--color-rci-Azul1);
+}
+
+.color-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+}
+
+.color-item {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.color-item label {
+    font-size: 0.9em;
+    color: var(--text-light);
+}
+
+.color-item input[type="color"] {
+    width: 100%;
+    height: 40px;
+    border: 2px solid var(--color-rci-Azul2);
+    border-radius: 6px;
+    background: none;
+    cursor: pointer;
+}
+
+.radius-control {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+/* Controle de forma do personagem */
+#radiusSlider2D {
+    width: 200px;
+    height: 200px;
+    background: linear-gradient(135deg, 
+        rgba(65, 192, 227, 0.1) 0%,
+        rgba(65, 192, 227, 0.2) 100%
+    );
+    border: 2px solid var(--color-rci-Azul2);
+    border-radius: 8px;
+    position: relative;
+    cursor: crosshair;
+    margin: 0 auto;
+}
+
+#radiusHandle {
+    width: 16px;
+    height: 16px;
+    background-color: var(--color-rci-Azul1);
+    border: 2px solid white;
+    border-radius: 50%;
+    position: absolute;
+    transform: translate(-50%, -50%);
+    top: 50%;
+    left: 50%;
+    cursor: grab;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    transition: box-shadow 0.2s ease;
+}
+
+#radiusHandle:active {
+    cursor: grabbing;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+}
+
+.radius-labels {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px;
+    font-size: 0.9em;
+    color: var(--text-light);
+}
+
+.radius-labels span {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+}
+
+.radius-value {
+    color: var(--color-rci-Azul1);
+    font-weight: bold;
+}
+
+.equipment-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.equipment-slots {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+}
+
+.equipment-slot {
+    aspect-ratio: 1;
+    background: rgba(255, 255, 255, 0.05);
+    border: 2px dashed var(--color-rci-Azul2);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+.slot-label {
+    font-size: 0.8em;
+    color: var(--text-light);
+    text-align: center;
+}
+
+.items-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    max-height: 300px;
+    overflow-y: auto;
+    padding-right: 10px;
+}
+
+.item {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--color-rci-Azul2);
+    border-radius: 6px;
+    padding: 10px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.item:hover {
+    background: rgba(65, 192, 227, 0.2);
+}
+
+.buttons-group {
+    display: flex;
+    gap: 15px;
+    margin-top: auto;
+}
+
+.buttons-group button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 20px;
+}
+
+/* Controles de radianos */
+.radiusControl {
+    position: relative;
+    margin: 20px 0;
+}
+
+#radiusSlider2D {
+    width: 200px;
+    height: 200px;
+    background: linear-gradient(to right, #ddd, #fff);
+    border: 2px solid #ccc;
+    border-radius: 8px;
+    position: relative;
+    cursor: pointer;
+}
+
+#radiusHandle {
+    width: 16px;
+    height: 16px;
+    background-color: #4a90e2;
+    border: 2px solid white;
+    border-radius: 50%;
+    position: absolute;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Modal */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 20;
+}
+
+.modal.hidden {
+    display: none;
+}
+
+/* Botões */
+.buttons-group {
+    margin-top: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* Estilos da página de login */
+.login-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: linear-gradient(135deg, var(--color-rci-Azul3) 0%, var(--color-rci-AzulFundo) 100%);
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.login-box {
+    background-color: rgba(var(--color-rci-Azul2), 0.2);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    padding: 40px;
+    border-radius: 15px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    width: 100%;
+    max-width: 400px;
+    min-height: 300px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.title-container {
+    text-align: center;
+    position: relative;
+    transition: all 0.5s ease;
+}
+
+.title-container h1 {
+    font-weight: 700;
+    font-size: 2.5em;
+    margin: 0;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    transition: all 0.5s ease;
+}
+
+.auth-options {
+    position: absolute;
+    left: 0;
+    right: 0;
+    opacity: 0;
+    transform: scale(0.8);
+    transition: all 0.3s ease;
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 20px;
+}
+
+.login-box:hover .title-container h1 {
+    transform: translateY(-20px);
+}
+
+.login-box:hover .auth-options {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.auth-options .btn {
+    min-width: 120px;
+    opacity: 0;
+    transform: scale(0.8);
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+}
+
+.auth-options .btn-login {
+    background-color: var(--color-rci-Azul1);
+    color: var(--color-rci-AzulFundo);
+}
+
+.auth-options .btn-register {
+    background-color: transparent;
+    color: var(--color-rci-Azul1);
+    border-color: var(--color-rci-Azul1);
+}
+
+.auth-options .btn:hover {
+    transform: translateY(-2px) scale(0.8);
+    box-shadow: 0 4px 15px rgba(65, 192, 227, 0.2);
+}
+
+.auth-options .btn-register:hover {
+    background-color: rgba(65, 192, 227, 0.1);
+}
+
+.login-box:hover .auth-options .btn {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.forms-container {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.3s ease;
+    margin-top: 20px;
+}
+
+.forms-container.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.forms-container.hidden {
+    display: none;
+}
+
+/* Formulários de autenticação */
+.auth-form {
+    display: none;
+    width: 100%;
+    max-width: 320px;
+    margin: 0 auto;
+    color: white;
+}
+
+.auth-form.active {
+    display: block;
+    animation: fadeIn 0.3s ease;
+}
+
+.auth-form h2 {
+    font-weight: 600;
+    font-size: 1.8em;
+    letter-spacing: 2px;
+    margin-bottom: 30px;
+    text-align: center;
+    color: white;
+    text-transform: uppercase;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* Sistema de formulários unificado */
+.form-group {
+    position: relative;
+    width: 100%;
+    margin-bottom: 35px;
+    cursor: text;
+}
+
+.form-group input {
+    width: 100%;
+    height: 52px;
+    padding: 0 50px;
+    border: 1px solid var(--color-rci-Azul2);
+    border-radius: 8px;
+    background-color: rgba(var(--color-rci-Azul3), 0.3);
+    color: var(--text-primary);
+    font-size: 16px;
+    transition: all 0.3s ease;
+}
+
+.form-group input:focus {
+    outline: none;
+    background-color: rgba(255, 255, 255, 0.2);
+    box-shadow: 0 0 0 2px rgba(65, 192, 227, 0.3);
+    border-color: var(--color-rci-Azul1);
+}
+
+.form-group small {
+    position: absolute;
+    right: 0;
+    bottom: -24px;
+    color: var(--text-secondary);
+    font-size: 0.7em;
+    font-style: italic;
+    font-weight: 300;
+    transition: all 0.3s ease;
+}
+
+/* Sistema de ícones unificado */
+.material-icons {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 24px !important;
+    height: 24px !important;
+    font-size: 24px !important;
+    line-height: 1 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    cursor: default;
+    color: var(--color-rci-Azul1);
+}
+
+.form-group .material-icons {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--color-rci-Azul1);
+    pointer-events: none;
+}
+
+.form-group .material-icons:not(.validation-icon) {
+    left: 15px;
+}
+
+.form-group .validation-icon {
+    right: 15px;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+/* Estados de validação */
+.form-group.valid .validation-icon.valid {
+    opacity: 1;
+    color: var(--color-rci-Azul1);
+}
+
+.form-group.invalid .validation-icon.invalid {
+    opacity: 1;
+    color: var(--color-error);
+}
+
+.form-group.valid input {
+    border-color: var(--color-rci-Azul1);
+}
+
+.form-group.invalid input {
+    border-color: var(--color-error);
+}
+
+/* Botões padronizados */
+.button-group {
+    display: flex;
+    gap: 15px;
+    margin-top: 40px;
+    width: 100%;
+}
+
+.btn {
+    flex: 1;
+    min-height: 52px;
+    padding: 0 30px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-primary {
+    background-color: var(--color-rci-Azul1);
+    color: var(--color-rci-AzulFundo);
+}
+
+.btn-secondary {
+    background-color: var(--color-rci-Azul2);
+    color: var(--text-primary);
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.btn:active {
+    transform: translateY(0);
+}
+
+/* Estilos para o formulário de registro */
+.checkbox-group {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: rgba(255, 255, 255, 0.8);
+    width: 100%;
+    padding: 10px 0;
+    margin: 15px 0;
+}
+
+.checkbox-group input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    accent-color: #4a90e2;
+}
+
+.checkbox-group label {
+    cursor: pointer;
+    font-size: 0.9em;
+    user-select: none;
+}
+
+.link-button {
+    background: none;
+    border: none;
+    color: var(--color-rci-Azul1);
+    text-decoration: underline;
+    cursor: pointer;
+    padding: 0;
+    font: inherit;
+    padding: 8px;
+    margin: -8px;
+    border-radius: 4px;
+    transition: background-color 0.3s ease;
+    font-weight: 500;
+    text-transform: uppercase;
+    font-size: 0.85em;
+    letter-spacing: 0.5px;
+}
+
+.link-button:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+}
+
+/* Modal dos termos */
+.modal-content {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    padding: 30px;
+    border-radius: 15px;
+    text-align: center;
+    color: white;
+    max-width: 400px;
+    width: 90%;
+    margin: 20px;
+    background-color: var(--color-rci-Azul3);
+    border: 1px solid var(--color-rci-Azul2);
+}
+
+.modal-content h3 {
+    margin-bottom: 20px;
+    font-size: 1.5em;
+}
+
+.modal-content p {
+    margin-bottom: 30px;
+    font-size: 1.2em;
+}
+
+/* Estilos para recuperação de senha */
+.forgot-password {
+    text-align: right;
+    margin-bottom: 15px;
+    width: 100%;
+    margin: 10px 0 20px;
+}
+
+.forgot-password .link-button {
+    font-size: 0.9em;
+    color: rgba(255, 255, 255, 0.7);
+    transition: color 0.3s ease;
+}
+
+.forgot-password .link-button:hover {
+    color: #4a90e2;
+}
+
+#forgotPasswordModal .modal-content {
+    max-width: 350px;
+    padding: 25px;
+}
+
+#forgotPasswordModal .form-group {
+    margin-bottom: 25px;
+}
+
+/* Sistema de Notificações */
+.notification-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+}
+
+.notification {
+    background-color: var(--color-rci-Azul3);
+    backdrop-filter: blur(10px);
+    padding: 20px 30px;
+    margin: 15px 25px;
+    border-radius: 8px;
+    color: white;
+    display: flex;
+    align-items: center;
+    min-width: 300px;
+    max-width: 400px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    transform: translateX(120%);
+    transition: transform 0.3s ease;
+    border-left-color: var(--color-rci-Azul1);
+}
+
+.notification.show {
+    transform: translateX(0);
+}
+
+.notification.success {
+    border-left: 4px solid var(--color-success);
+}
+
+.notification.error {
+    border-left: 4px solid var(--color-error);
+}
+
+.notification.info {
+    border-left: 4px solid var(--color-info);
+}
+
+.notification .icon {
+    display: none; /* Removendo classe conflitante */
+}
+
+.notification .material-icons {
+    width: 20px;
+    height: 20px;
+    margin-right: 12px;
+    color: var(--color-rci-Azul1);
+}
+
+.notification .message {
+    flex: 1;
+    font-size: 0.95em;
+}
+
+.notification .close-btn {
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.5);
+    cursor: pointer;
+    padding: 0;
+    margin-left: 12px;
+    font-size: 20px;
+    transition: color 0.3s ease;
+}
+
+.notification .close-btn:hover {
+    color: white;
+}
+
+/* Indicadores de validação nos campos */
+.form-group .validation-icon {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+}
+
+/* Estado de foco e hover */
+.form-group:hover input {
+    background-color: rgba(255, 255, 255, 0.15);
+}
+
+h1, h2, h3, .btn {
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* Animação de entrada */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ... outros estilos específicos ... */

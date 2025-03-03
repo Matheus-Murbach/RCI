@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RPG Tabletop - Login</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <link rel="icon" type="image/x-icon" href="../favicon.ico">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-box">
+            <div class="title-container">
+                <h1>RPG Tabletop</h1>
+                <div class="auth-options">
+                    <button type="button" class="btn btn-login">Entrar</button>
+                    <button type="button" class="btn btn-register">Registrar</button>
+                </div>
+            </div>
+            <div class="forms-container hidden">
+                <form id="loginForm" class="login-form auth-form">
+                    <h2>Login</h2>
+                    <div class="form-group">
+                        <span class="material-icons">person</span>
+                        <input type="text" id="username" placeholder="Nome de usuário" required>
+                        <span class="material-icons validation-icon valid">check_circle</span>
+                        <span class="material-icons validation-icon invalid">error</span>
+                    </div>
+                    <div class="form-group">
+                        <span class="material-icons">lock</span>
+                        <input type="password" id="password" placeholder="Senha" required>
+                        <span class="material-icons validation-icon valid">check_circle</span>
+                        <span class="material-icons validation-icon invalid">error</span>
+                    </div>
+                    <div class="button-group">
+                        <button type="submit" class="btn btn-primary">Confirmar</button>
+                        <button type="button" class="btn btn-secondary btn-back">Voltar</button>
+                    </div>
+                </form>
+                <form id="registerForm" class="login-form auth-form">
+                    <h2>Registro</h2>
+                    <div class="form-group">
+                        <span class="material-icons">person</span>
+                        <input type="text" id="regUsername" placeholder="Nome de usuário" required>
+                        <small>Evite usar seu nome verdadeiro</small>
+                        <span class="material-icons validation-icon valid">check_circle</span>
+                        <span class="material-icons validation-icon invalid">error</span>
+                    </div>
+                    <div class="form-group">
+                        <span class="material-icons">lock</span>
+                        <input type="password" id="regPassword" placeholder="Senha" required>
+                        <small>Mínimo 4 caracteres</small>
+                        <span class="material-icons validation-icon valid">check_circle</span>
+                        <span class="material-icons validation-icon invalid">error</span>
+                    </div>
+                    <div class="form-group checkbox-group">
+                        <input type="checkbox" id="termsCheck" required>
+                        <label for="termsCheck">Li e aceito os</label>
+                        <button type="button" class="link-button" id="showTermsBtn">termos de uso</button>
+                    </div>
+                    <div class="button-group">
+                        <button type="submit" class="btn btn-primary">Criar Conta</button>
+                        <button type="button" class="btn btn-secondary btn-back">Voltar</button>
+                    </div>
+                </form>
+            </div>
+            <div id="termsModal" class="modal hidden">
+                <div class="modal-content">
+                    <h3>Termos de Uso</h3>
+                    <p>Só não seja babaca</p>
+                    <button class="btn btn-primary" id="closeTermsBtn">Entendi</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script type="module" src="../js/login.js"></script>
+</body>
+</html>
