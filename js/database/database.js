@@ -249,16 +249,14 @@ export class Database {
             };
 
             const result = await this.query('characters', options);
+
+            if (!result.success || !result.character) {
+                throw new Error('Resposta inválida do servidor');
+            }
+
             console.log('✅ Resposta do servidor:', result);
-            
-            // Garantir que todos os dados retornem do servidor
-            return { 
-                success: true, 
-                character: {
-                    ...validatedData,
-                    id: result.character.id
-                }
-            };
+            return result;
+
         } catch (error) {
             console.error('❌ Erro ao salvar personagem:', error);
             return { 

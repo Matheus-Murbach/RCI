@@ -36,7 +36,7 @@ function initDatabase() {
             accent_color TEXT NOT NULL DEFAULT '#0000FF',
             top_radius REAL NOT NULL DEFAULT 0.75,
             bottom_radius REAL NOT NULL DEFAULT 0.75,
-            equipment JSON,
+            equipment_data TEXT DEFAULT '{}',
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
         )`);
@@ -368,7 +368,7 @@ app.get('/api/characters', (req, res) => {
             accent_color as accentColor,
             top_radius as topRadius,
             bottom_radius as bottomRadius,
-            equipment,
+            equipment_data as equipment,
             created_at as createdAt
         FROM characters 
         WHERE user_id = ?
@@ -463,7 +463,7 @@ app.post('/api/characters', (req, res) => {
                 accent_color,
                 top_radius,
                 bottom_radius,
-                equipment
+                equipment_data
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         `, [
             characterId,
@@ -474,12 +474,7 @@ app.post('/api/characters', (req, res) => {
             accentColor || '#0000FF',
             topRadius || 0.75,
             bottomRadius || 0.75,
-            JSON.stringify(equipment || {
-                head: null,
-                leftHand: null,
-                rightHand: null,
-                back: null
-            })
+            JSON.stringify(equipment || {})
         ], function(err) {
             if (err) {
                 console.error('❌ Erro ao criar personagem:', err);
