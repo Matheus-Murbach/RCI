@@ -44,12 +44,21 @@
         </div>
     </div>
 
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.157.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.157.0/examples/jsm/"
+            }
+        }
+    </script>
+    
     <!-- Scripts em ordem correta -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script src="../js/LODController.js"></script>
     <script src="../js/gameState.js" type="module"></script>
-    <script src="../js/spaceScene.js" type="module"></script>
+    <script src="../js/map/spaceScene.js" type="module"></script>
     <script src="../js/character.js" type="module"></script>
     <script src="../js/select.js" type="module"></script>
 </body>

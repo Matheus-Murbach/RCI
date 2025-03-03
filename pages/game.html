@@ -7,10 +7,26 @@
     <style>
         body { margin: 0; }
         canvas { width: 100vw; height: 100vh; display: block; }
+        #backButton {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            background-color: #333;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            z-index: 1000;
+        }
+        #backButton:hover {
+            background-color: #555;
+        }
     </style>
 </head>
 <body>
     <canvas id="gameCanvas"></canvas>
+    <button id="backButton">Voltar para Seleção</button>
     <script type="importmap">
         {
             "imports": {
@@ -19,6 +35,6 @@
             }
         }
     </script>
-    <script type="module" src="/js/game.js"></script>
+    <script type="module" src="../js/game.js"></script>
 </body>
 </html>

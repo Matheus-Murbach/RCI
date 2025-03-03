@@ -1,8 +1,9 @@
+import * as THREE from 'three';
 import { Character } from './character.js';
 import { authGuard } from './auth/authGuard.js';
 import { Database } from './database/database.js';
-import { SpaceScene } from './spaceScene.js';
-import { CameraController } from './cameraController.js';
+import { SpaceScene } from './map/spaceScene.js';
+import { CameraController } from './cameraControllerLobby.js';
 
 class CharacterCreator {
     constructor() {
@@ -161,11 +162,33 @@ class CharacterCreator {
             window.location.href = 'select.html';
         });
 
+        // Botão Logout
+        document.getElementById('logoutButton').addEventListener('click', () => {
+            authGuard.logout();
+            window.location.href = 'login.html';
+        });
+
+        // Botão Toggle Orbit
+        document.getElementById('toggleOrbit').addEventListener('click', () => {
+            if (this.cameraController) {
+                this.cameraController.toggleOrbit();
+                const button = document.getElementById('toggleOrbit');
+                button.classList.toggle('active');
+            }
+        });
+
         // Inputs de cor
         ['mainColor', 'skinColor', 'accentColor'].forEach(id => {
             document.getElementById(id).addEventListener('input', (e) => {
                 this.updateColor(id, e.target.value);
             });
+        });
+
+        // Verificar cliques fora do controle de raio
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.radius-control')) {
+                this.isDragging = false;
+            }
         });
     }
 
@@ -589,5 +612,13 @@ function setupRadiusControl() {
         isDragging = false;
     });
 }
+
+// Adicionar método ao CameraController
+CameraController.prototype.toggleOrbit = function() {
+    this.autoRotate = !this.autoRotate;
+    if (this.controls) {
+        this.controls.autoRotate = this.autoRotate;
+    }
+};
 
 // ... resto do código da tela de criação ...

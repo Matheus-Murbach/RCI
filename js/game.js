@@ -16,6 +16,14 @@ class Game {
 
     async initialize() {
         try {
+            // Adicionar listener para o botão de retorno
+            const backButton = document.getElementById('backButton');
+            if (backButton) {
+                backButton.addEventListener('click', () => {
+                    window.location.href = 'select.html';
+                });
+            }
+            
             console.log('🎮 Iniciando jogo...');
             
             // Verificar e carregar dados do personagem

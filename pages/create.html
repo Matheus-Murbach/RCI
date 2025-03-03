@@ -106,14 +106,26 @@
         </div>
     </div>
 
-    <!-- Scripts em ordem correta -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <!-- Importmap primeiro -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.157.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.157.0/examples/jsm/"
+            }
+        }
+    </script>
+    
+    <!-- Scripts em ordem correta com importação do Three.js -->
+    <script type="module">
+        import * as THREE from 'three';
+        window.THREE = THREE; // Disponibilizar THREE globalmente
+    </script>
     <script src="../js/LODController.js"></script>
-    <script src="../js/gameState.js" type="module"></script>
-    <script src="../js/spaceScene.js" type="module"></script>
-    <script src="../js/character.js" type="module"></script>
-    <script src="../js/cameraController.js" type="module"></script>
-    <script src="../js/create.js" type="module"></script>
+    <script type="module" src="../js/gameState.js"></script>
+    <script type="module" src="../js/character.js"></script>
+    <script type="module" src="../js/cameraControllerLobby.js"></script>
+    <script type="module" src="../js/map/spaceScene.js"></script>
+    <script type="module" src="../js/create.js"></script>
 </body>
 </html>
