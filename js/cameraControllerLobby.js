@@ -1,3 +1,5 @@
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { authGuard } from './auth/authGuard.js';
 
 export class CameraController {
@@ -15,7 +17,7 @@ export class CameraController {
     }
 
     setupOrbitControls() {
-        this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
+        this.controls = new OrbitControls(this.camera, this.renderer.domElement);
         
         // Configurações dos controles
         Object.assign(this.controls, {

@@ -1,8 +1,8 @@
 import { Database } from './database/database.js';
 import { authGuard } from './auth/authGuard.js';
 import { gameState } from './gameState.js';
-import { SpaceScene } from './spaceScene.js';
-import { CameraController } from './cameraController.js';
+import { SpaceScene } from './map/spaceScene.js';
+import { CameraController } from './cameraControllerLobby.js';
 import { Character } from './character.js'; // Adicionar esta importação
 
 class CharacterSelector {
@@ -270,6 +270,8 @@ class CharacterSelector {
         // Botão de jogar
         document.getElementById('playButton').addEventListener('click', () => {
             if (this.selectedCharacter && authGuard.isUserActive()) {
+                // Salvar o personagem selecionado no localStorage
+                localStorage.setItem('selectedCharacter', JSON.stringify(this.selectedCharacter));
                 window.location.href = 'game.html';
             }
         });

@@ -1029,4 +1029,8 @@ h1, h2, h3, .btn {
     transition: all var(--transition-speed) ease;
 }
 
+canvas {
+    user-select: none;
+    -webkit-user-select: none;
+}
 /* ... outros estilos específicos ... */

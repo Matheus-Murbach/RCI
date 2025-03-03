@@ -1,13 +1,17 @@
+import * as THREE from 'three';
+
 // Classes e funções compartilhadas
 export class Character {
-    constructor(name, mainColor, skinColor, accentColor) {
-        this.name = name;
-        this.mainColor = mainColor || '#FF0000';
-        this.skinColor = skinColor || '#FFA07A';
-        this.accentColor = accentColor || '#0000FF';
-        this.topRadius = 0.75;
-        this.bottomRadius = 0.75;
-        this.userId = null; // Adicionado campo userId
+    constructor(data) {
+        // Aceitar dados do banco ou valores padrão
+        this.name = data?.name || '';
+        this.mainColor = data?.main_color || data?.mainColor || '#FF0000';
+        this.skinColor = data?.skin_color || data?.skinColor || '#FFA07A';
+        this.accentColor = data?.accent_color || data?.accentColor || '#0000FF';
+        this.topRadius = data?.top_radius || data?.topRadius || 0.75;
+        this.bottomRadius = data?.bottom_radius || data?.bottomRadius || 0.75;
+        this.id = data?.id || null;
+        this.userId = data?.userId || null;
         this.equipment = {
             head: null,
             leftHand: null,
@@ -15,12 +19,10 @@ export class Character {
             back: null
         };
         
-        // Adicionar log para debug
-        console.log('Novo personagem criado:', {
+        console.log('Personagem inicializado com:', {
             name: this.name,
             mainColor: this.mainColor,
             skinColor: this.skinColor,
-            accentColor: this.accentColor,
             topRadius: this.topRadius,
             bottomRadius: this.bottomRadius
         });
@@ -45,32 +47,40 @@ export class Character {
 
     // Método para criar a representação 3D do personagem
     create3DModel() {
-        const group = new THREE.Group();
-        
-        // Corpo (cilindro)
-        const bodyGeometry = new THREE.CylinderGeometry(
-            this.topRadius,
-            this.bottomRadius,
-            2,
-            32
-        );
-        const bodyMaterial = new THREE.MeshPhongMaterial({
-            color: this.mainColor
-        });
-        const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
-        body.position.y = -0.5;
-        group.add(body);
-        
-        // Cabeça (esfera)
-        const headGeometry = new THREE.SphereGeometry(0.5, 32, 32);
-        const headMaterial = new THREE.MeshPhongMaterial({
-            color: this.skinColor
-        });
-        const head = new THREE.Mesh(headGeometry, headMaterial);
-        head.position.y = 1;
-        group.add(head);
-        
-        return group;
+        try {
+            const group = new THREE.Group();
+            
+            // Corpo (cilindro)
+            const bodyGeometry = new THREE.CylinderGeometry(
+                this.topRadius,
+                this.bottomRadius,
+                2,
+                32
+            );
+            const bodyMaterial = new THREE.MeshPhongMaterial({
+                color: this.mainColor
+            });
+            const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+            body.position.y = 1; // Ajustado para ficar mais alto
+            body.castShadow = true;
+            group.add(body);
+            
+            // Cabeça (esfera)
+            const headGeometry = new THREE.SphereGeometry(0.5, 32, 32);
+            const headMaterial = new THREE.MeshPhongMaterial({
+                color: this.skinColor
+            });
+            const head = new THREE.Mesh(headGeometry, headMaterial);
+            head.position.y = 2.5; // Ajustado para ficar acima do corpo
+            head.castShadow = true;
+            group.add(head);
+            
+            console.log('Modelo 3D do personagem criado com sucesso');
+            return group;
+        } catch (error) {
+            console.error('Erro ao criar modelo 3D:', error);
+            return null;
+        }
     }
 
     // Método para atualizar o modelo 3D existente
