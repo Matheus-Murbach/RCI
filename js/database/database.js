@@ -130,10 +130,18 @@ export class Database {
         try {
             console.log('📝 Criando usuário:', userData.username);
 
+            // Usar a rota correta com tratamento de erro adequado
             const result = await this.query('users/register', {
                 method: 'POST',
                 body: JSON.stringify(userData)
+            }).catch(error => {
+                console.error('Erro na requisição:', error);
+                throw new Error(error.message || 'Erro ao criar usuário');
             });
+
+            if (!result.success) {
+                throw new Error(result.message || 'Falha ao criar usuário');
+            }
 
             console.log('✅ Usuário criado:', result);
             return {
@@ -145,7 +153,7 @@ export class Database {
             console.error('❌ Erro ao criar usuário:', error);
             return { 
                 success: false,
-                error: error.message
+                error: error.message || 'Erro ao criar usuário'
             };
         }
     }

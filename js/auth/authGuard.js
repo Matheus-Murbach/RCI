@@ -94,15 +94,20 @@ class AuthGuard {
         try {
             console.log('🔄 Iniciando registro:', formData.username);
             
-            // Verificar se usuário já existe
-            const existingUser = await this.db.getUserByUsername(formData.username);
-            if (existingUser.exists) {
+            // Verificar se usuário já existe usando a rota específica
+            const checkExisting = await this.db.query('users/exists', {
+                method: 'POST',
+                body: JSON.stringify({ username: formData.username })
+            });
+            
+            if (checkExisting.exists) {
                 return {
                     success: false,
                     message: 'Este nome de usuário já está em uso'
                 };
             }
             
+            // Se não existe, prosseguir com o registro
             const result = await this.db.createUser(formData);
             console.log('📝 Resultado do registro:', result);
 

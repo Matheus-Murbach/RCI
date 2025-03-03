@@ -597,6 +597,33 @@ app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Adicionar antes das outras rotas de usuário
+app.post('/api/users/exists', (req, res) => {
+    const { username } = req.body;
+    
+    if (!username) {
+        return res.status(400).json({
+            success: false,
+            message: 'Nome de usuário não fornecido'
+        });
+    }
+
+    console.log('🔍 Verificando existência do usuário:', username);
+
+    db.get('SELECT id FROM users WHERE username = ?', [username], (err, user) => {
+        if (err) {
+            console.error('❌ Erro ao verificar usuário:', err);
+            return handleSqlError(res, err);
+        }
+
+        res.json({
+            success: true,
+            exists: !!user,
+            debug: { username, timestamp: new Date().toISOString() }
+        });
+    });
+});
+
 // Adicionar antes das outras rotas
 app.post('/api/users', async (req, res) => {
     const { username, password } = req.body;
