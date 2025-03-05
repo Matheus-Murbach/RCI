@@ -1,21 +1,56 @@
-export class SpaceScene {
+import { BaseScene } from './baseScene.js';
+import { MaterialSystem } from '../core/materialSystem.js';
+import { LightSystem } from '../core/lightSystem.js';
+import { RenderSystem } from '../core/renderSystem.js';
+import { THREE } from '../core/three.js';
+
+export class SpaceScene extends BaseScene {
     constructor(scene, camera) {
-        this.scene = scene;
-        this.camera = camera;
+        super(scene, camera);
+        this.materialSystem = MaterialSystem.getInstance();
+        this.lightSystem = LightSystem.getInstance();
+        this.renderSystem = RenderSystem.getInstance(); // Use getInstance
+        
+        // Ajustar far plane da câmera para ver muito mais longe
+        if (this.camera) {
+            this.camera.far = 15000; // Aumentado significativamente (era tipicamente 1000 ou 2000)
+            this.camera.near = 0.1;  // Mantido próximo para objetos próximos
+            this.camera.updateProjectionMatrix(); // Importante: atualizar após mudanças
+        }
+
         this.characterModel = null;
+        this.cameraController = null; // Será definido depois
         this.init();
+    }
+
+    setCameraController(controller) {
+        this.cameraController = controller;
+        console.log('📸 Camera Controller definido na SpaceScene');
     }
 
     init() {
         this.lodController = null;
         this.initLODController();
         
-        // Adicionar controle de velocidade global
+        // Ajustar controle de velocidade global
         this.baseSpeed = 0.0005;
         this.timeScale = 1.0;
         
-        // Adicionar iluminação padrão
-        this.setupLighting();
+        // Mover a configuração do background para depois da inicialização do renderer
+        if (this.renderSystem.isRendererInitialized()) {
+            this.renderSystem.setBackground(new THREE.Color(0x000000));
+        }
+        
+        // Configurar iluminação usando LightSystem
+        this.lightSystem.setupLighting(this.scene, {
+            ambient: {
+                intensity: 0.2 // Reduzir luz ambiente para o espaço
+            },
+            directional: {
+                intensity: 2.0, // Aumentar intensidade para o sol
+                position: new THREE.Vector3(-600, 150, -2000)
+            }
+        });
         
         // Criar elementos da cena
         this.createStars();
@@ -32,7 +67,7 @@ export class SpaceScene {
 
     // Novo método para calcular velocidade relativa
     calculateSpeed(distance) {
-        const baseSpeed = this.baseSpeed * this.timeScale * (1000 / distance);
+        const baseSpeed = (this.baseSpeed * 0.5) * this.timeScale * (3000 / distance); // Ajustado para novas distâncias
         
         // 80% lentos, 20% rápidos
         if (Math.random() > 0.2) {
@@ -59,26 +94,6 @@ export class SpaceScene {
         this.lodController = new LODController(this.camera);
     }
 
-    setupLighting() {
-        // Luz ambiente para iluminação base
-        const ambientLight = new THREE.AmbientLight(0x404040, 1);
-        this.scene.add(ambientLight);
-
-        // Luz direcional principal (sol)
-        const mainLight = new THREE.DirectionalLight(0xffffff, 1);
-        mainLight.position.set(5, 5, 5);
-        this.scene.add(mainLight);
-
-        // Luz direcional secundária (preenchimento)
-        const fillLight = new THREE.DirectionalLight(0xffffff, 0.5);
-        fillLight.position.set(-5, 3, -5);
-        this.scene.add(fillLight);
-
-        // Luz hemisférica para melhorar a iluminação global
-        const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.5);
-        this.scene.add(hemiLight);
-    }
-
     createStars() {
         const starsGeometry = new THREE.BufferGeometry();
         const starsMaterial = new THREE.PointsMaterial({
@@ -90,7 +105,7 @@ export class SpaceScene {
 
         const starsVertices = [];
         // Aumentar a área de distribuição das estrelas para criar mais profundidade
-        const spread = 3000;
+        const spread = 10000; // Aumentado para acompanhar a nova render distance
         for (let i = 0; i < 2000; i++) { // Reduzido de 5000 para 2000
             const x = (Math.random() - 0.5) * spread;
             const y = (Math.random() - 0.5) * spread;
@@ -107,8 +122,8 @@ export class SpaceScene {
         const dustGeometry = new THREE.BufferGeometry();
         const dustParticles = [];
         const dustVelocities = [];
-        const particleCount = 300;
-        const spread = 100;
+        const particleCount = 600; // Dobrado de 300 para 600
+        const spread = 300;     // Triplicado de 100 para 300
 
         // Criar partículas
         for (let i = 0; i < particleCount; i++) {
@@ -168,64 +183,63 @@ export class SpaceScene {
     }
 
     createSun() {
-        const sunGroup = new THREE.Group();
-        
-        // Núcleo do sol com geometria complexa
-        const sunCoreGeometry = new THREE.IcosahedronGeometry(50, 4);
-        const sunCoreMaterial = new THREE.MeshBasicMaterial({ // Mudado para MeshBasicMaterial
-            color: 0xff6600,
-            transparent: true,
-            opacity: 0.1,
-            blending: THREE.AdditiveBlending, // Adicionado blending aditivo
-            depthWrite: false // Desativado depth write para evitar artefatos visuais
-        });
-        const sunCore = new THREE.Mesh(sunCoreGeometry, sunCoreMaterial);
-        
-        // Sistema de partículas para efeito de plasma
-        const plasmaParticles = new THREE.BufferGeometry();
-        const plasmaCount = 20000; // Dobrado o número de partículas
-        const plasmaPositions = new Float32Array(plasmaCount * 3);
-        const plasmaSizes = new Float32Array(plasmaCount);
-        const plasmaColors = new Float32Array(plasmaCount * 3); // Novo array para cores
-        
-        // Função auxiliar para distribuição uniforme em esfera
-        const randomSpherePoint = () => {
-            const u = Math.random();
-            const v = Math.random();
-            const theta = 2 * Math.PI * u;
-            const phi = Math.acos(2 * v - 1);
-            const radius = 50 + (Math.random() * 5); // Aumentado variação do raio
-            
-            return {
-                x: radius * Math.sin(phi) * Math.cos(theta),
-                y: radius * Math.sin(phi) * Math.sin(theta),
-                z: radius * Math.cos(phi)
-            };
+        const config = {
+            plasmaRadius: 450,
+            plasmaCount: 75000,
+            plasmaSize: {min: 5, max: 6},
+            // Ajustar posição para ser consistente em todas as cenas
+            position: new THREE.Vector3(-600, 150, -2000), // Modificado Y de 300 para 150 e Z de -1500 para -2000
+            colors: {
+                yellow: 0xffbb00, // Ajustado para um amarelo mais solar
+                orange: 0xff7a00  // Mantido laranja
+            },
+            movement: {
+                speed: 0.05,
+                turbulence: 15,
+                pulseSpeed: 0.05,
+                rotationSpeed: 0.05,
+                lateralForce: 0.05
+            }
         };
 
-        // Cores para interpolação - ajustadas para cores mais solares
-        const color1 = new THREE.Color(0xffdd44); // Amarelo mais quente
-        const color2 = new THREE.Color(0xff4400); // Laranja-avermelhado
+        const sunGroup = new THREE.Group();
+        const plasma = this.createSunPlasma(config);
+        sunGroup.add(plasma);
+        sunGroup.position.copy(config.position);
+
+        this.scene.add(sunGroup);
+        this.sun = sunGroup;
+        this.sunPlasma = plasma;
+    }
+
+    createSunPlasma(config) {
+        const plasmaParticles = new THREE.BufferGeometry();
+        const plasmaPositions = new Float32Array(config.plasmaCount * 3);
+        const plasmaSizes = new Float32Array(config.plasmaCount);
+        const plasmaColors = new Float32Array(config.plasmaCount * 3);
         
-        for (let i = 0; i < plasmaCount; i++) {
-            const point = randomSpherePoint();
+        const color1 = new THREE.Color(config.colors.yellow);
+        const color2 = new THREE.Color(config.colors.orange);
+        
+        for (let i = 0; i < config.plasmaCount; i++) {
+            const radius = config.plasmaRadius + (Math.random() * 20 - 10);
+            const theta = Math.random() * Math.PI * 2;
+            const phi = Math.acos(2 * Math.random() - 1);
+            
+            const x = radius * Math.sin(phi) * Math.cos(theta);
+            const y = radius * Math.sin(phi) * Math.sin(theta);
+            const z = radius * Math.cos(phi);
+            
             const i3 = i * 3;
+            plasmaPositions[i3] = x;
+            plasmaPositions[i3 + 1] = y;
+            plasmaPositions[i3 + 2] = z;
             
-            // Posições
-            plasmaPositions[i3] = point.x;
-            plasmaPositions[i3 + 1] = point.y;
-            plasmaPositions[i3 + 2] = point.z;
+            plasmaSizes[i] = config.plasmaSize.min + Math.random() * (config.plasmaSize.max - config.plasmaSize.min);
             
-            // Tamanhos - mais variação
-            plasmaSizes[i] = 2 + Math.random() * 4;
-            
-            // Cores - variação radial
-            const distFromCenter = Math.sqrt(point.x * point.x + point.y * point.y + point.z * point.z);
-            const heightInfluence = (point.y + 50) / 100; // Componente vertical
-            const radialInfluence = (distFromCenter - 45) / 10; // Componente radial
-            const mix = (heightInfluence + radialInfluence) * 0.5; // Combina os dois efeitos
-            const color = new THREE.Color().lerpColors(color2, color1, mix);
-            
+            // Inicializar com uma cor aleatória entre amarelo e laranja
+            const mixFactor = Math.random();
+            const color = new THREE.Color().lerpColors(color2, color1, mixFactor);
             plasmaColors[i3] = color.r;
             plasmaColors[i3 + 1] = color.g;
             plasmaColors[i3 + 2] = color.b;
@@ -237,29 +251,110 @@ export class SpaceScene {
         
         const plasmaMaterial = new THREE.ShaderMaterial({
             uniforms: {
-                time: { value: 0 }
+                time: { value: 0 },
+                colorYellow: { value: new THREE.Color(config.colors.yellow) },
+                colorOrange: { value: new THREE.Color(config.colors.orange) },
+                moveSpeed: { value: config.movement.speed },
+                turbulence: { value: config.movement.turbulence },
+                pulseSpeed: { value: config.movement.pulseSpeed },
+                rotationSpeed: { value: config.movement.rotationSpeed },
+                lateralForce: { value: config.movement.lateralForce }
             },
             vertexShader: `
                 attribute float size;
                 attribute vec3 color;
                 varying vec3 vColor;
                 uniform float time;
+                uniform vec3 colorYellow;
+                uniform vec3 colorOrange;
+                uniform float moveSpeed;
+                uniform float turbulence;
+                uniform float pulseSpeed;
+                uniform float rotationSpeed;
+                uniform float lateralForce;
+                
+                //Funções de ruído melhoradas
+                float rand(vec2 co) {
+                    return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
+                }
+                
+                float noise(vec3 pos) {
+                    vec3 fl = floor(pos);
+                    vec3 fr = fract(pos);
+                    fr = fr * fr * (3.0 - 2.0 * fr);
+                    
+                    vec2 h = vec2(0.0, 1.0);
+                    float n = mix(
+                        mix(
+                            mix(rand(fl.xy + h.xx), rand(fl.xy + h.yx), fr.x),
+                            mix(rand(fl.xy + h.xy), rand(fl.xy + h.yy), fr.x),
+                            fr.y
+                        ),
+                        mix(
+                            mix(rand(fl.xy + h.xx + 1.0), rand(fl.xy + h.yx + 1.0), fr.x),
+                            mix(rand(fl.xy + h.xy + 1.0), rand(fl.xy + h.yy + 1.0), fr.x),
+                            fr.y
+                        ),
+                        fr.z
+                    );
+                    return n * 2.0 - 1.0;
+                }
                 
                 void main() {
-                    vColor = color;
+                    // Cores oscilantes mais rápidas e aleatórias
+                    float colorOsc = noise(vec3(position.xy * 0.1, time)) * 0.5 + 0.5;
+                    vColor = mix(color, mix(colorOrange, colorYellow, colorOsc), 0.5);
+                    
                     vec3 pos = position;
                     
-                    // Movimento do plasma melhorado
-                    float noise = sin(time * 2.0 + pos.x * 0.7) * 
-                                cos(time * 1.5 + pos.y * 0.7) * 
-                                sin(time * 1.0 + pos.z * 0.7) * 0.7;
-                                
-                    // Adicionar efeito de pulso
-                    float pulse = sin(time * 0.5) * 0.1 + 1.0;
+                    // Movimento de rotação
+                    float rotAngle = time * rotationSpeed;
+                    mat2 rotation = mat2(
+                        cos(rotAngle), -sin(rotAngle),
+                        sin(rotAngle), cos(rotAngle)
+                    );
+                    pos.xy = rotation * pos.xy;
                     
-                    vec3 newPos = pos + normalize(pos) * (noise * 3.0 + pulse);
+                    // Movimento lateral aleatório
+                    float lateralNoise = noise(vec3(
+                        time * 0.5 + pos.x * 0.1,
+                        time * 0.7 + pos.y * 0.1,
+                        time * 0.3 + pos.z * 0.1
+                    ));
+                    vec3 lateral = vec3(
+                        lateralNoise,
+                        noise(pos.yzx + time),
+                        noise(pos.zxy + time)
+                    ) * lateralForce;
+                    
+                    // Movimento caótico em todas as direções
+                    float noiseX = noise(vec3(time * moveSpeed + pos.x, pos.y, pos.z));
+                    float noiseY = noise(vec3(pos.x, time * moveSpeed + pos.y, pos.z));
+                    float noiseZ = noise(vec3(pos.x, pos.y, time * moveSpeed + pos.z));
+                    
+                    // Turbulência em espiral
+                    float spiral = sin(time + length(pos.xy) * 0.3) * 3.0;
+                    float heightFactor = (pos.y / length(pos)) * 2.0; // Fator de altura
+                    
+                    // Combinar todos os movimentos
+                    vec3 offset = vec3(
+                        noiseX * turbulence + lateral.x + spiral * cos(time),
+                        noiseY * turbulence + lateral.y + heightFactor * sin(time * 2.0),
+                        noiseZ * turbulence + lateral.z + spiral * sin(time)
+                    );
+                    
+                    // Pulsar com variação por partícula
+                    float individualPulse = noise(vec3(pos.xy * 0.1, time * pulseSpeed));
+                    float pulse = sin(time * pulseSpeed + length(pos) * 0.1) * 0.3 + individualPulse;
+                    
+                    // Posição final
+                    vec3 newPos = pos + normalize(pos) * offset * (1.0 + pulse);
                     vec4 mvPosition = modelViewMatrix * vec4(newPos, 1.0);
-                    gl_PointSize = size * (1200.0 / -mvPosition.z) * pulse;
+                    
+                    // Tamanho variável das partículas
+                    float sizePulse = 1.0 + (pulse * 0.5) + (rand(pos.xy + time) * 0.5);
+                    gl_PointSize = size * (1500.0 / -mvPosition.z) * sizePulse;
+                    
                     gl_Position = projectionMatrix * mvPosition;
                 }
             `,
@@ -270,32 +365,16 @@ export class SpaceScene {
                     float r = distance(gl_PointCoord, vec2(0.5));
                     if (r > 0.5) discard;
                     
-                    float intensity = 1.0 - (r * 2.0);
+                    float intensity = pow(1.0 - r * 2.0, 2.0);
                     gl_FragColor = vec4(vColor, intensity);
                 }
             `,
             transparent: true,
-            depthWrite: false
+            depthWrite: false,
+            blending: THREE.AdditiveBlending
         });
         
-        const plasma = new THREE.Points(plasmaParticles, plasmaMaterial);
-        
-        // Adicionar luzes
-        const sunLight = new THREE.PointLight(0xff7700, 2.0, 1000); // Reduzida intensidade
-        const glowLight = new THREE.PointLight(0xff5500, 1.5, 500); // Reduzida intensidade
-        
-        // Montar o grupo do sol
-        sunGroup.add(sunCore);
-        sunGroup.add(plasma);
-        sunGroup.add(sunLight);
-        sunGroup.add(glowLight);
-        
-        sunGroup.position.set(-200, 100, -500);
-        this.scene.add(sunGroup);
-        
-        // Guardar referências para animação
-        this.sun = sunGroup;
-        this.sunPlasma = plasma;
+        return new THREE.Points(plasmaParticles, plasmaMaterial);
     }
 
     createPlanets() {
@@ -310,10 +389,9 @@ export class SpaceScene {
         // Ajustar as camadas orbitais para distâncias mais próximas
         const sunPos = this.sun.position;
         const orbitLayers = [
-            { minDist:  500, maxDist: 1000, count:  5, minSize:  1, maxSize: 10 },
-            { minDist: 1000, maxDist: 1500, count: 10, minSize: 10, maxSize: 50 },
-            { minDist: 1500, maxDist: 2000, count: 15, minSize: 50, maxSize: 100},
-
+            { minDist: 1500, maxDist: 3000, count: 5, minSize: 3, maxSize: 30 },    // Triplicado
+            { minDist: 3000, maxDist: 6000, count: 10, minSize: 30, maxSize: 150 }, // Triplicado
+            { minDist: 6000, maxDist: 12000, count: 15, minSize: 150, maxSize: 300 } // Aumentado para acompanhar a nova render distance
         ];
 
         orbitLayers.forEach(layer => {
@@ -361,16 +439,17 @@ export class SpaceScene {
     createPlanetGroup(data) {
         const planetGroup = new THREE.Group();
         
-        // Criar texturas diretamente
+        // Criar texturas com aparência não metálica
         const texture = this.generatePlanetTexture(data.color, data.tipo);
         const normalMap = this.generateNormalMap();
 
         const planetMaterial = new THREE.MeshStandardMaterial({
             map: texture,
             normalMap: normalMap,
-            normalScale: new THREE.Vector2(2, 2),
-            roughness: 0.7,
-            metalness: 0.1
+            normalScale: new THREE.Vector2(1.5, 1.5), // Reduzido para efeito mais sutil
+            roughness: 1.0, // Máxima rugosidade para eliminar reflexos
+            metalness: 0.0, // Zero metalicidade
+            envMapIntensity: 0.1 // Mínima intensidade de reflexão do ambiente
         });
 
         const planetGeometry = new THREE.SphereGeometry(data.radius, 32, 32);
@@ -388,8 +467,8 @@ export class SpaceScene {
                 ];
 
                 for (let i = 0; i < 3; i++) {
-                    const innerRadius = data.radius * (1.3 + i * 0.15);
-                    const outerRadius = innerRadius * (1.1 + Math.random() * 0.1);
+                    const innerRadius = data.radius * (1.5 + i * 0.2); // Aumentado espaçamento
+                    const outerRadius = innerRadius * (1.2 + Math.random() * 0.15); // Aumentado gap
                     
                     const ringGeo = new THREE.RingGeometry(
                         innerRadius,
@@ -411,8 +490,8 @@ export class SpaceScene {
             } else {
                 // Anel único mais realista
                 const ringGeometry = new THREE.RingGeometry(
-                    data.radius * 1.4,
-                    data.radius * 1.8,
+                    data.radius * 1.6, // Aumentado de 1.4 para 1.6
+                    data.radius * 2.2, // Aumentado de 1.8 para 2.2
                     64  // Aumentado número de segmentos
                 );
                 const ringColor = new THREE.Color(data.color).offsetHSL(0, 0.1, 0.05);
@@ -431,11 +510,14 @@ export class SpaceScene {
         }
 
         if (data.atmosphere) {
-            const atmosphereGeometry = new THREE.SphereGeometry(data.radius * 1.2, 32, 32);
+            const atmosphereGeometry = new THREE.SphereGeometry(data.radius * 1.3, 32, 32); // Aumentado de 1.2 para 1.3
             const atmosphereMaterial = new THREE.MeshPhongMaterial({
-                color: data.color,
+                color: new THREE.Color(data.color).multiplyScalar(1.2), // Clarear levemente a cor
                 transparent: true,
-                opacity: 0.3
+                opacity: 0.15, // Reduzido de 0.3 para 0.15
+                side: THREE.DoubleSide, // Garantir que a atmosfera seja visível de todos os ângulos
+                depthWrite: false, // Evitar artefatos visuais
+                blending: THREE.AdditiveBlending // Adicionar blending para efeito mais suave
             });
             const atmosphere = new THREE.Mesh(atmosphereGeometry, atmosphereMaterial);
             planetGroup.add(atmosphere);
@@ -542,7 +624,7 @@ export class SpaceScene {
                 planetGroup.userData.minScale,
                 Math.min(
                     planetGroup.userData.maxScale,
-                    planetGroup.userData.originalScale * (1000 / distance)
+                    planetGroup.userData.originalScale * (3000 / distance) // Aumentado de 1000 para 3000
                 )
             );
             planetGroup.scale.setScalar(scale);
@@ -650,9 +732,14 @@ export class SpaceScene {
     }
 
     update() {
-        // Atualizar o sol
+        // Atualizar controles da câmera se existirem
+        if (this.cameraController) {
+            this.cameraController.update();
+        }
+        
+        // Atualização mais lenta para o plasma
         if (this.sunPlasma) {
-            this.sunPlasma.material.uniforms.time.value += 0.01 * this.timeScale;
+            this.sunPlasma.material.uniforms.time.value += 0.01 * this.timeScale; // Reduzido de 0.02 para 0.01
         }
         
         // Atualizar poeira espacial
@@ -678,7 +765,7 @@ export class SpaceScene {
         // Atualizar posição das estrelas
         if (this.stars) {
             const positions = this.stars.geometry.attributes.position.array;
-            const spread = 3000;
+            const spread = 10000; // Aumentado para corresponder ao createStars
             
             for (let i = 0; i < positions.length; i += 3) {
                 // Mover cada estrela na direção definida
@@ -700,6 +787,11 @@ export class SpaceScene {
             }
             
             this.stars.geometry.attributes.position.needsUpdate = true;
+        }
+
+        // Atualizar luz do sol junto com o plasma
+        if (this.sunLight && this.sunPlasma) {
+            this.sunLight.position.copy(this.sun.position);
         }
 
         // Animações ou atualizações contínuas aqui
@@ -733,43 +825,81 @@ export class SpaceScene {
         const hsl = {};
         color.getHSL(hsl);
 
-        // Pré-calcular cores para reutilização
+        // Ajustar saturação e luminosidade para tons mais terrosos/rochosos
         const baseColors = Array(5).fill().map((_, i) => {
             return new THREE.Color().setHSL(
                 hsl.h + (i - 2) * 0.02,
-                hsl.s,
-                hsl.l * (0.8 + i * 0.05)
+                Math.max(0.3, hsl.s * 0.6), // Reduzir ainda mais a saturação
+                Math.max(0.2, Math.min(0.6, hsl.l * 0.8))  // Limitar luminosidade
             ).getStyle();
         });
 
-        // Preencher com cor base
+        // Preencher com cor base mais fosca
         ctx.fillStyle = baseColors[2];
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // Adicionar detalhes com padrões otimizados
         if (tipo === 'rochoso') {
-            // Usar padrões maiores para menos operações
-            for (let i = 0; i < 100; i++) {
+            // Adicionar mais textura granular para aparência rochosa
+            for (let i = 0; i < 200; i++) { // Aumentado número de detalhes
                 const x = Math.random() * canvas.width;
                 const y = Math.random() * canvas.height;
-                const size = 5 + Math.random() * 15;
+                const size = 2 + Math.random() * 8; // Tamanhos menores para textura mais granular
                 
+                ctx.globalAlpha = 0.4 + Math.random() * 0.3; // Mais opacidade
                 ctx.fillStyle = baseColors[Math.floor(Math.random() * baseColors.length)];
                 ctx.beginPath();
                 ctx.arc(x, y, size, 0, Math.PI * 2);
                 ctx.fill();
             }
         } else {
-            // Padrão para planetas gasosos - usando gradientes
+            // Padrão para planetas gasosos - mais suave
             const gradient = ctx.createLinearGradient(0, 0, canvas.width, 0);
+            
+            // Adicionar mais paradas no gradiente para transições mais suaves
             baseColors.forEach((color, i) => {
                 gradient.addColorStop(i / (baseColors.length - 1), color);
+                // Adicionar paradas intermediárias para suavizar
+                if (i < baseColors.length - 1) {
+                    gradient.addColorStop((i + 0.5) / (baseColors.length - 1), 
+                        new THREE.Color(color).lerp(
+                            new THREE.Color(baseColors[i + 1]), 
+                            0.5
+                        ).getStyle()
+                    );
+                }
             });
             
             ctx.fillStyle = gradient;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Adicionar textura sutil para quebrar o brilho
+            ctx.globalCompositeOperation = 'multiply';
+            for (let i = 0; i < 50; i++) {
+                ctx.globalAlpha = 0.1;
+                ctx.fillStyle = '#000000';
+                const x = Math.random() * canvas.width;
+                const y = Math.random() * canvas.height;
+                const size = 20 + Math.random() * 40;
+                ctx.beginPath();
+                ctx.arc(x, y, size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Adicionar nuvens suaves
+            ctx.globalCompositeOperation = 'soft-light'; // Mudado para soft-light
+            for (let i = 0; i < 30; i++) {
+                ctx.globalAlpha = 0.15;
+                ctx.fillStyle = '#ffffff';
+                const x = Math.random() * canvas.width;
+                const y = Math.random() * canvas.height;
+                const size = 30 + Math.random() * 60;
+                ctx.beginPath();
+                ctx.arc(x, y, size, 0, Math.PI * 2);
+                ctx.fill();
+            }
         }
 
+        ctx.globalAlpha = 1;
         const texture = new THREE.CanvasTexture(canvas);
         texture.wrapS = THREE.RepeatWrapping;
         texture.wrapT = THREE.RepeatWrapping;
@@ -813,49 +943,49 @@ export class SpaceScene {
         console.log('🎮 Atualizando modelo do personagem:', character);
 
         try {
-            // Validar e converter dados do personagem
-            const config = {
-                topRadius: parseFloat(character.topRadius || 0.75),
-                bottomRadius: parseFloat(character.bottomRadius || 0.75),
-                mainColor: character.mainColor || '#FF0000',
-                skinColor: character.skinColor || '#FFA07A',
-                accentColor: character.accentColor || '#0000FF'
-            };
-
-            console.log('Configurações validadas:', config);
-
-            // Remover modelo anterior se existir
             if (this.characterModel) {
                 this.scene.remove(this.characterModel);
             }
 
-            // Criar novo modelo com as configurações corretas
             const group = new THREE.Group();
             
-            // Corpo (cilindro) com configurações validadas
+            // Corpo (cilindro) com material melhorado
             const bodyGeometry = new THREE.CylinderGeometry(
-                config.topRadius,
-                config.bottomRadius,
+                character.topRadius || 0.75,
+                character.bottomRadius || 0.75,
                 2,
                 32
             );
-            const bodyMaterial = new THREE.MeshPhongMaterial({
-                color: new THREE.Color(config.mainColor)
+            const bodyMaterial = new THREE.MeshStandardMaterial({
+                color: new THREE.Color(character.mainColor),
+                roughness: 0.3,
+                metalness: 0.4,
+                envMapIntensity: 1.2,
+                flatShading: false
             });
             const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
             body.position.y = -0.5;
+            body.castShadow = true;
+            body.receiveShadow = true;
             group.add(body);
             
-            // Cabeça (esfera) com cor correta
+            // Cabeça (esfera) com material melhorado
             const headGeometry = new THREE.SphereGeometry(0.5, 32, 32);
-            const headMaterial = new THREE.MeshPhongMaterial({
-                color: new THREE.Color(config.skinColor)
+            const headMaterial = new THREE.MeshStandardMaterial({
+                color: new THREE.Color(character.skinColor),
+                roughness: 0.2,
+                metalness: 0.3,
+                envMapIntensity: 1.2,
+                flatShading: false
             });
             const head = new THREE.Mesh(headGeometry, headMaterial);
             head.position.y = 1;
+            head.castShadow = true;
+            head.receiveShadow = true;
             group.add(head);
 
-            // Adicionar à cena
+            group.position.set(0, 0, 0); 
+
             this.characterModel = group;
             this.scene.add(this.characterModel);
 

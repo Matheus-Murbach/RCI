@@ -1,8 +1,9 @@
-import * as THREE from 'three';
-import { Character } from './character.js';
+import { THREE } from './core/three.js';
+import { Character } from './character/character.js';
 import { authGuard } from './auth/authGuard.js';
 import { Database } from './database/database.js';
 import { SpaceScene } from './map/spaceScene.js';
+import { RenderSystem } from './core/renderSystem.js';
 import { CameraController } from './cameraControllerLobby.js';
 
 class CharacterCreator {
@@ -10,9 +11,7 @@ class CharacterCreator {
         this.db = new Database();
         this.character3D = null;
         this.currentCharacter = null;
-        this.scene = null;
-        this.camera = null;
-        this.renderer = null;
+        this.renderSystem = RenderSystem.getInstance();
         
         // Configurações padrão
         this.mainColor = '#FF0000';
@@ -63,50 +62,46 @@ class CharacterCreator {
         console.log('Inicializando cena...');
         const canvas = document.getElementById('characterPreview');
         const previewSection = document.querySelector('.preview-section');
-
+        
         if (!canvas || !previewSection) {
-            throw new Error('Elementos da cena não encontrados');
+            throw new Error('Canvas ou container não encontrados');
         }
 
-        // Configurar cena
-        this.scene = new THREE.Scene();
-        this.scene.background = new THREE.Color(0x000000);
-
-        // Configurar câmera
-        this.camera = new THREE.PerspectiveCamera(
-            75,
-            previewSection.offsetWidth / previewSection.offsetHeight,
-            0.1,
-            5000
-        );
-
-        // Configurar renderer
-        this.renderer = new THREE.WebGLRenderer({
-            canvas,
-            antialias: true,
-            logarithmicDepthBuffer: true
-        });
-
-        // Configurar SpaceScene
-        this.spaceScene = new SpaceScene(this.scene, this.camera);
+        // Inicializar renderização usando RenderSystem
+        const { scene, camera, renderer } = this.renderSystem.initialize(canvas, previewSection);
+        
+        this.scene = scene;
+        this.camera = camera;
+        this.renderer = renderer;
+        
+        // Inicializar SpaceScene
+        this.spaceScene = new SpaceScene(scene, camera);
         
         // Configurar controles de câmera
-        this.cameraController = new CameraController(
-            this.camera,
-            this.renderer,
-            this.scene
-        );
+        this.cameraController = new CameraController(camera, renderer, scene);
+        this.spaceScene.setCameraController(this.cameraController);
+        this.renderSystem.setActiveScene(this.spaceScene);
+        
+        // Garantir que o modo cinematográfico esteja ativado inicialmente
+        this.cameraController.cinematicMode = true;
+        
+        // Configurar evento do botão de órbita com estado correto
+        const orbitButton = document.getElementById('toggleOrbit');
+        if (orbitButton) {
+            orbitButton.classList.add('active');
+            orbitButton.addEventListener('click', () => {
+                this.cameraController.toggleCinematicMode();
+                orbitButton.classList.toggle('active');
+            });
+        }
 
-        // Configurar redimensionamento
-        this.setupResizeHandler(previewSection);
-        
         // Iniciar animação
-        this.animate();
+        this.renderSystem.animate();
         
-        console.log('Cena inicializada');
+        console.log('Cena inicializada com sucesso');
     }
 
-    initCharacter() {
+    async initCharacter() {
         console.log('Inicializando personagem...');
         
         try {
@@ -117,8 +112,12 @@ class CharacterCreator {
                 this.accentColor
             );
             
-            this.character3D = this.currentCharacter.create3DModel();
-            this.scene.add(this.character3D);
+            // Aguardar a criação do modelo 3D
+            this.character3D = await this.currentCharacter.create3DModel();
+            if (this.character3D && this.scene) {
+                this.scene.add(this.character3D);
+                console.log('Personagem adicionado à cena');
+            }
             
             console.log('Personagem inicializado');
         } catch (error) {
@@ -171,9 +170,7 @@ class CharacterCreator {
         // Botão Toggle Orbit
         document.getElementById('toggleOrbit').addEventListener('click', () => {
             if (this.cameraController) {
-                this.cameraController.toggleOrbit();
-                const button = document.getElementById('toggleOrbit');
-                button.classList.toggle('active');
+                this.cameraController.toggleCinematicMode();
             }
         });
 
@@ -189,6 +186,35 @@ class CharacterCreator {
             if (!e.target.closest('.radius-control')) {
                 this.isDragging = false;
             }
+        });
+
+        // Atualizar manipulador do botão de órbita
+        const orbitButton = document.getElementById('toggleOrbit');
+        if (orbitButton) {
+            // Garantir que o botão comece com o estado correto
+            orbitButton.classList.add('active');
+            
+            orbitButton.addEventListener('click', () => {
+                if (this.cameraController) {
+                    this.cameraController.toggleCinematicMode();
+                    // O estado do botão agora é gerenciado dentro do CameraController
+                }
+            });
+        }
+
+        // Adicionar handlers para botões de olhos
+        const eyeButtons = document.querySelectorAll('.eye-option');
+        eyeButtons.forEach(button => {
+            button.addEventListener('click', (e) => {
+                // Remover classe active de todos os botões
+                eyeButtons.forEach(btn => btn.classList.remove('active'));
+                // Adicionar classe active ao botão clicado
+                button.classList.add('active');
+                
+                // Atualizar olhos do personagem
+                const eyeType = button.dataset.eyeType;
+                this.currentCharacter.updateEyes(eyeType);
+            });
         });
     }
 
@@ -395,6 +421,22 @@ class CharacterCreator {
         // Atualizar geometria do personagem
         this.updateCharacterShape();
     }
+
+    updateMaterials() {
+        if (this.character3D) {
+            // Atualizar material do corpo
+            const bodyMaterial = this.character3D.children[0].material;
+            bodyMaterial.roughness = 0.8;
+            bodyMaterial.metalness = 0.2;
+            bodyMaterial.envMapIntensity = 1;
+            
+            // Atualizar material da cabeça
+            const headMaterial = this.character3D.children[1].material;
+            headMaterial.roughness = 0.7;
+            headMaterial.metalness = 0.1;
+            headMaterial.envMapIntensity = 1;
+        }
+    }
 }
 
 // Inicialização
@@ -411,30 +453,41 @@ document.addEventListener('DOMContentLoaded', () => {
 function createCharacter3D(options = {}) {
     const group = new THREE.Group();
     
-    // Corpo (cilindro)
+    // Corpo com material melhorado
     const bodyGeometry = new THREE.CylinderGeometry(
         options.topRadius || 0.75,
         options.bottomRadius || 0.75,
         2,
         32
     );
-    const bodyMaterial = new THREE.MeshPhongMaterial({
-        color: options.mainColor || '#FF0000'
+    const bodyMaterial = new THREE.MeshStandardMaterial({
+        color: options.mainColor || '#FF0000',
+        roughness: 0.3,          // Menor rugosidade para mais brilho
+        metalness: 0.4,          // Aumentar metalicidade
+        envMapIntensity: 1.2,    // Aumentar intensidade de reflexão
+        flatShading: false       // Suavizar superfície
     });
     const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
     body.position.y = -0.5;
+    body.castShadow = true;
+    body.receiveShadow = true;
     group.add(body);
     
-    // Cabeça (esfera)
+    // Cabeça com material melhorado
     const headGeometry = new THREE.SphereGeometry(0.5, 32, 32);
-    const headMaterial = new THREE.MeshPhongMaterial({
-        color: options.skinColor || '#FFA07A'
+    const headMaterial = new THREE.MeshStandardMaterial({
+        color: options.skinColor || '#FFA07A',
+        roughness: 0.2,          // Menor rugosidade para mais brilho
+        metalness: 0.3,          // Metalicidade moderada
+        envMapIntensity: 1.2,    // Aumentar intensidade de reflexão
+        flatShading: false       // Suavizar superfície
     });
     const head = new THREE.Mesh(headGeometry, headMaterial);
     head.position.y = 1;
+    head.castShadow = true;
+    head.receiveShadow = true;
     group.add(head);
     
-    // Posicionar o personagem em cima do asteroide
     group.position.y = 1;
     
     return group;
@@ -612,13 +665,3 @@ function setupRadiusControl() {
         isDragging = false;
     });
 }
-
-// Adicionar método ao CameraController
-CameraController.prototype.toggleOrbit = function() {
-    this.autoRotate = !this.autoRotate;
-    if (this.controls) {
-        this.controls.autoRotate = this.autoRotate;
-    }
-};
-
-// ... resto do código da tela de criação ...

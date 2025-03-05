@@ -1,18 +1,30 @@
-import * as THREE from 'three';
+import { THREE } from '../core/three.js';
+import { BaseScene } from './baseScene.js';
+import { MaterialSystem } from '../core/materialSystem.js';
+import { LightSystem } from '../core/lightSystem.js';
 import { CameraControllerGame } from '../cameraControllerGame.js';
 
-export class PlainScene {
+export class PlainScene extends BaseScene {
     constructor(scene, camera) {
-        this.scene = scene;
-        this.camera = camera;
+        super(scene, camera);
+        this.materialSystem = MaterialSystem.getInstance();
+        this.lightSystem = LightSystem.getInstance();
         this.cameraController = new CameraControllerGame(camera);
         this.characterModel = null;
         this.init();
     }
 
     init() {
-        // Configurar iluminação
-        this.setupLighting();
+        // Configurar background usando RenderSystem
+        this.renderSystem.setBackground(new THREE.Color(0x000000));
+        
+        // Configurar iluminação usando LightSystem
+        this.lightSystem.setupLighting(this.scene, {
+            directional: {
+                intensity: 1.8, // Ajuste específico para a cena plana
+                position: new THREE.Vector3(10, 10, 10)
+            }
+        });
         
         // Criar elementos da cena
         this.createTerrain();
@@ -20,35 +32,17 @@ export class PlainScene {
         this.createAmbientElements();
     }
 
-    setupLighting() {
-        // Luz direcional principal (sol)
-        const sunLight = new THREE.DirectionalLight(0xffffcc, 1);
-        sunLight.position.set(0, 100, 0);
-        sunLight.castShadow = true;
-        sunLight.shadow.mapSize.width = 2048;
-        sunLight.shadow.mapSize.height = 2048;
-        this.scene.add(sunLight);
-
-        // Luz ambiente suave
-        const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
-        this.scene.add(ambientLight);
-
-        // Luz hemisférica para melhorar sombras
-        const hemiLight = new THREE.HemisphereLight(0xffffbb, 0x080820, 0.5);
-        this.scene.add(hemiLight);
-    }
-
     createTerrain() {
-        // Criar um plano simples e grande
         const size = 1000;
         const geometry = new THREE.PlaneGeometry(size, size);
         
-        // Material com textura procedural
+        // Material do terreno melhorado
         const material = new THREE.MeshStandardMaterial({
             map: this.generateTerrainTexture(),
-            roughness: 0.8,
-            metalness: 0.1,
-            color: 0x90AF50,
+            roughness: 0.8,          // Alta rugosidade para o chão
+            metalness: 0.0,          // Sem metalicidade
+            envMapIntensity: 0.5,    // Baixa reflexão
+            color: 0x90AF50
         });
 
         const terrain = new THREE.Mesh(geometry, material);
@@ -146,19 +140,31 @@ export class PlainScene {
     createTree() {
         const group = new THREE.Group();
 
-        // Tronco
+        // Tronco com material melhorado
         const trunkGeometry = new THREE.CylinderGeometry(1, 1.5, 8, 8);
-        const trunkMaterial = new THREE.MeshStandardMaterial({ color: 0x4b3621 });
+        const trunkMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0x4b3621,
+            roughness: 0.7,          // Ajustar rugosidade
+            metalness: 0.1,          // Baixa metalicidade
+            envMapIntensity: 1.0     // Reflexão moderada
+        });
         const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
         trunk.castShadow = true;
+        trunk.receiveShadow = true;
         group.add(trunk);
 
-        // Copa da árvore
+        // Copa da árvore com material melhorado
         const leavesGeometry = new THREE.ConeGeometry(5, 10, 8);
-        const leavesMaterial = new THREE.MeshStandardMaterial({ color: 0x005500 });
+        const leavesMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0x005500,
+            roughness: 0.6,          // Ajustar rugosidade
+            metalness: 0.1,          // Baixa metalicidade
+            envMapIntensity: 1.0     // Reflexão moderada
+        });
         const leaves = new THREE.Mesh(leavesGeometry, leavesMaterial);
         leaves.position.y = 8;
         leaves.castShadow = true;
+        leaves.receiveShadow = true;
         group.add(leaves);
 
         return group;

@@ -51,6 +51,33 @@
                 </div>
             </div>
 
+            <!-- Adicionar dentro da controls-section, após a shape-section -->
+            <div class="eyes-section">
+                <h3>Expressão dos Olhos</h3>
+                <div class="eye-options">
+                    <button class="eye-option active" data-eye-type="normal">
+                        <span class="eye-text">( ° ° )</span>
+                        Normal
+                    </button>
+                    <button class="eye-option" data-eye-type="happy">
+                        <span class="eye-text">(^^)</span>
+                        Feliz
+                    </button>
+                    <button class="eye-option" data-eye-type="angry">
+                        <span class="eye-text">( ` ´ )</span>
+                        Bravo
+                    </button>
+                    <button class="eye-option" data-eye-type="sad">
+                        <span class="eye-text">( ' ' )</span>
+                        Triste
+                    </button>
+                    <button class="eye-option" data-eye-type="sleepy">
+                        <span class="eye-text">( - - )</span>
+                        Sonolento
+                    </button>
+                </div>
+            </div>
+
             <!-- Seção de equipamentos -->
             <div class="equipment-section">
                 <h3>Equipamentos</h3>
@@ -96,7 +123,7 @@
         <div class="preview-section">
             <canvas id="characterPreview"></canvas>
             <div class="control-buttons">
-                <button id="toggleOrbit" class="orbit-toggle">
+                <button id="toggleOrbit" class="orbit-toggle active" title="Alternar câmera cinematográfica">
                     <span class="material-icons">sync</span>
                 </button>
                 <button id="logoutButton" class="logout-toggle">
@@ -123,7 +150,7 @@
     </script>
     <script src="../js/LODController.js"></script>
     <script type="module" src="../js/gameState.js"></script>
-    <script type="module" src="../js/character.js"></script>
+    <script type="module" src="../js/character/character.js"></script>
     <script type="module" src="../js/cameraControllerLobby.js"></script>
     <script type="module" src="../js/map/spaceScene.js"></script>
     <script type="module" src="../js/create.js"></script>

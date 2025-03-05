@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+import { THREE } from './core/three.js';
 
 export class CameraControllerGame {
     constructor(camera) {
@@ -18,15 +18,15 @@ export class CameraControllerGame {
         this.maxAngle = Math.PI / 2;    // Ângulo vertical máximo (72 graus)
 
         // Velocidades e Sensibilidade
-        this.panSpeed = 0.05;      // Velocidade do movimento lateral
-        this.rotateSpeed = 0.005;  // Velocidade da rotação
+        this.panSpeed = 0.03;      // Velocidade do movimento lateral
+        this.rotateSpeed = 0.003;  // Velocidade da rotação
         this.zoomSpeed = 1;        // Velocidade do zoom
-        this.smoothness = 0.1;     // Suavização do movimento (0-1)
+        this.smoothness = 2;     // Suavização do movimento (0-1)
 
         // Estado do Mouse e Teclado
         this.isLeftMouseDown = false;
         this.isRightMouseDown = false;
-        this.isShiftDown = false;
+        this.isRotationMode = false;
         this.lastMouseX = 0;
         this.lastMouseY = 0;
 
@@ -45,25 +45,31 @@ export class CameraControllerGame {
         document.addEventListener('mousemove', (e) => this.onMouseMove(e));
         document.addEventListener('wheel', (e) => this.onMouseWheel(e));
         document.addEventListener('contextmenu', (e) => e.preventDefault());
-        
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Shift') this.isShiftDown = true;
-        });
-        document.addEventListener('keyup', (e) => {
-            if (e.key === 'Shift') this.isShiftDown = false;
-        });
     }
 
     onMouseDown(event) {
-        if (event.button === 0) this.isLeftMouseDown = true;
-        if (event.button === 2) this.isRightMouseDown = true;
+        if (event.button === 0) {
+            this.isLeftMouseDown = true;
+            if (this.isRightMouseDown) {
+                this.isRotationMode = true;
+            }
+        }
+        if (event.button === 2) {
+            this.isRightMouseDown = true;
+        }
         this.lastMouseX = event.clientX;
         this.lastMouseY = event.clientY;
     }
 
     onMouseUp(event) {
-        if (event.button === 0) this.isLeftMouseDown = false;
-        if (event.button === 2) this.isRightMouseDown = false;
+        if (event.button === 0) {
+            this.isLeftMouseDown = false;
+            this.isRotationMode = false;
+        }
+        if (event.button === 2) {
+            this.isRightMouseDown = false;
+            this.isRotationMode = false;
+        }
     }
 
     onMouseMove(event) {
@@ -72,7 +78,15 @@ export class CameraControllerGame {
         const deltaX = event.clientX - this.lastMouseX;
         const deltaY = event.clientY - this.lastMouseY;
 
-        if (this.isRightMouseDown && !this.isShiftDown) {
+        if (this.isRotationMode) {
+            // Rotação da câmera
+            this.rotationAngle -= deltaX * this.rotateSpeed;
+            this.angle = THREE.MathUtils.clamp(
+                this.angle + deltaY * this.rotateSpeed,
+                this.minAngle,
+                this.maxAngle
+            );
+        } else if (this.isRightMouseDown) {
             // Movimento da câmera (pan)
             const forward = new THREE.Vector3(
                 Math.sin(this.rotationAngle),
@@ -87,16 +101,6 @@ export class CameraControllerGame {
 
             this.target.add(right.multiplyScalar(-deltaX * this.panSpeed));
             this.target.add(forward.multiplyScalar(-deltaY * this.panSpeed));
-        }
-
-        if (this.isRightMouseDown && this.isShiftDown) {
-            // Rotação da câmera
-            this.rotationAngle -= deltaX * this.rotateSpeed;
-            this.angle = THREE.MathUtils.clamp(
-                this.angle + deltaY * this.rotateSpeed,
-                this.minAngle,
-                this.maxAngle
-            );
         }
 
         this.lastMouseX = event.clientX;

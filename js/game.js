@@ -1,5 +1,4 @@
-import * as THREE from 'three';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { THREE, OrbitControls } from './core/three.js';
 import { PlainScene } from './map/plainScene.js';
 import { CameraController } from './cameraControllerLobby.js';
 import { Character } from './character.js';
@@ -39,8 +38,8 @@ class Game {
             this.character = new Character(characterData);
             console.log('✅ Personagem criado:', this.character);
             
-            // Inicializar Three.js
-            this.initThree();
+            // Inicializar Three.js primeiro
+            await this.initThree();
             
             // Inicializar cena
             console.log('🌍 Inicializando cena...');
@@ -69,34 +68,40 @@ class Game {
         }
     }
 
-    initThree() {
+    async initThree() {
         try {
             // Criar cena
             this.scene = new THREE.Scene();
-            console.log('Scene created:', this.scene);
             
-            // Configurar câmera
+            // Configurar câmera com os mesmos parâmetros do select.js
             this.camera = new THREE.PerspectiveCamera(
                 75,
                 window.innerWidth / window.innerHeight,
                 0.1,
-                2000
+                5000
             );
-            this.camera.position.set(0, 5, 10);
+            this.camera.position.set(0, 2, 5);
             
-            // Configurar renderer
+            // Configurar renderer com as mesmas configurações do select.js
             const canvas = document.getElementById('gameCanvas');
             if (!canvas) throw new Error('Canvas não encontrado');
             
             this.renderer = new THREE.WebGLRenderer({
-                canvas: canvas,
-                antialias: true
+                canvas,
+                antialias: true,
+                logarithmicDepthBuffer: true,
+                shadowMap: {
+                    enabled: true,
+                    type: THREE.PCFSoftShadowMap
+                }
             });
-            this.renderer.setSize(window.innerWidth, window.innerHeight);
-            this.renderer.shadowMap.enabled = true;
             
-            // Adicionar evento de redimensionamento
+            this.renderer.setPixelRatio(window.devicePixelRatio);
+            this.renderer.setSize(window.innerWidth, window.innerHeight);
+            
             window.addEventListener('resize', () => this.handleResize());
+            
+            return true;
         } catch (error) {
             console.error('Erro na inicialização do Three.js:', error);
             throw error;
@@ -116,13 +121,19 @@ class Game {
         requestAnimationFrame(() => this.animate());
         
         // Atualizar controles
-        this.cameraController.update();
+        if (this.cameraController) {
+            this.cameraController.update();
+        }
         
         // Atualizar cena
-        this.plainScene.update();
+        if (this.plainScene) {
+            this.plainScene.update();
+        }
         
         // Renderizar
-        this.renderer.render(this.scene, this.camera);
+        if (this.renderer && this.scene && this.camera) {
+            this.renderer.render(this.scene, this.camera);
+        }
     }
 }
 

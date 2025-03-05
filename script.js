@@ -240,6 +240,9 @@ function initCharacterPreview() {
     const camera = new THREE.PerspectiveCamera(75, previewSection.offsetWidth / previewSection.offsetHeight, 0.1, 1000);
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
     
+    // Remover configuração antiga de luz e usar a mesma da SpaceScene
+    const spaceScene = new SpaceScene(scene, camera);
+    
     function resizeRenderer() {
         const width = previewSection.offsetWidth;
         const height = previewSection.offsetHeight;
@@ -253,12 +256,6 @@ function initCharacterPreview() {
     // Adicionar listener para redimensionamento
     window.addEventListener('resize', resizeRenderer);
     resizeRenderer();
-    
-    // Adicionar luz
-    const light = new THREE.DirectionalLight(0xffffff, 1);
-    light.position.set(0, 5, 5);
-    scene.add(light);
-    scene.add(new THREE.AmbientLight(0x404040));
     
     // Controles de câmera
     const controls = new THREE.OrbitControls(camera, renderer.domElement);
@@ -535,13 +532,13 @@ function initializePreviewScene() {
     const container = canvas.parentElement;
     
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0xf8f9fa); // Adicionar cor de fundo
+    scene.background = new THREE.Color(0xf8f9fa);
     
     const camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
     const renderer = new THREE.WebGLRenderer({ 
         canvas, 
         antialias: true,
-        alpha: true // Permitir transparência
+        alpha: true
     });
     
     // Configurar renderer
@@ -550,18 +547,10 @@ function initializePreviewScene() {
     
     // Configurar câmera
     camera.position.z = 5;
-    camera.position.y = 0.5; // Ajustar posição da câmera
+    camera.position.y = 0.5;
     
-    // Adicionar luzes
-    const light = new THREE.DirectionalLight(0xffffff, 1);
-    light.position.set(5, 5, 5);
-    scene.add(light);
-    
-    const backLight = new THREE.DirectionalLight(0xffffff, 0.5);
-    backLight.position.set(-5, 5, -5);
-    scene.add(backLight);
-    
-    scene.add(new THREE.AmbientLight(0x404040));
+    // Remover configuração antiga de luz e usar a mesma da SpaceScene
+    const spaceScene = new SpaceScene(scene, camera);
     
     // Criar controles de órbita
     const controls = new THREE.OrbitControls(camera, renderer.domElement);

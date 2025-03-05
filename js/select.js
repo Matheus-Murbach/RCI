@@ -1,9 +1,11 @@
+import { THREE } from './core/three.js';
 import { Database } from './database/database.js';
 import { authGuard } from './auth/authGuard.js';
 import { gameState } from './gameState.js';
 import { SpaceScene } from './map/spaceScene.js';
 import { CameraController } from './cameraControllerLobby.js';
-import { Character } from './character.js'; // Adicionar esta importação
+import { Character } from './character/character.js';
+import { RenderSystem } from './core/renderSystem.js';
 
 class CharacterSelector {
     constructor() {
@@ -13,41 +15,29 @@ class CharacterSelector {
         this.renderer = null;
         this.selectedCharacter = null;
         this.characters = [];
+        this.renderSystem = RenderSystem.getInstance();
     }
 
     async initialize() {
         try {
             console.log('🚀 Iniciando CharacterSelector...');
             
-            // Adicionar chamada do setupEventListeners
-            this.setupEventListeners();
-            console.log('✅ Event listeners configurados');
+            // Verificar autenticação primeiro
+            if (!this.checkAuth()) return;
             
-            // 1. Verificar banco de dados
-            await this.checkDatabase();
+            // Inicializar cena 3D antes de carregar personagens
+            await this.initializeScene();
             
-            // 2. Verificar autenticação
-            if (!this.checkAuth()) {
-                return;
-            }
-
-            console.log('✅ Autenticação verificada');
-            
-            // 3. Carregar e mostrar personagens
+            // Carregar personagens depois que a cena estiver pronta
             await this.loadAndDisplayCharacters();
             
-            // 4. Inicializar cena 3D se houver personagens
-            if (this.characters.length > 0) {
-                console.log('🎮 Iniciando cena 3D...');
-                await this.initializeScene();
-                console.log('✅ Cena 3D inicializada');
-            }
+            // Configurar event listeners por último
+            this.setupEventListeners();
             
             console.log('✅ Inicialização completa');
-
         } catch (error) {
             console.error('❌ Erro fatal:', error);
-            setTimeout(() => window.location.reload(), 3000);
+            this.handleError(error);
         }
     }
 
@@ -115,6 +105,12 @@ class CharacterSelector {
             console.log('✅ Exibindo personagens encontrados');
             this.displayCharacters();
 
+            // Selecionar automaticamente o primeiro personagem
+            if (this.characters.length > 0) {
+                console.log('🎯 Selecionando primeiro personagem automaticamente');
+                this.selectCharacter(this.characters[0]);
+            }
+
         } catch (error) {
             console.error('❌ Erro ao carregar personagens:', error);
             this.handleError(error);
@@ -122,68 +118,34 @@ class CharacterSelector {
     }
 
     async initializeScene() {
-        console.log('🎨 Configurando cena 3D...');
-        
         const canvas = document.getElementById('characterPreview');
-        const previewSection = document.querySelector('.preview-section');
+        const container = canvas.parentElement;
         
-        if (!canvas || !previewSection) {
-            console.error('❌ Elementos da cena não encontrados:', {
-                canvas: !!canvas,
-                previewSection: !!previewSection
-            });
-            return;
+        if (!canvas || !container) {
+            console.error('❌ Canvas não encontrado');
+            throw new Error('Canvas não encontrado');
         }
 
-        // Configurar cena
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x000000);
-
-        // Configurar câmera
-        const camera = new THREE.PerspectiveCamera(
-            75,
-            previewSection.offsetWidth / previewSection.offsetHeight,
-            0.1,
-            5000
-        );
-
-        // Configurar renderer
-        const renderer = new THREE.WebGLRenderer({
-            canvas,
-            antialias: true,
-            logarithmicDepthBuffer: true
-        });
-
-        // Configurar controlador de câmera
-        const cameraController = new CameraController(camera, renderer, scene);
+        const { scene, camera, renderer } = this.renderSystem.initialize(canvas, container);
         
-        // Criar cena espacial
-        this.scene = new SpaceScene(scene, camera);
-
-        // Configurar redimensionamento
-        const handleResize = () => {
-            const width = previewSection.offsetWidth;
-            const height = previewSection.offsetHeight;
-            camera.aspect = width / height;
-            camera.updateProjectionMatrix();
-            renderer.setSize(width, height, false);
-        };
+        this.scene = scene;
+        this.camera = camera;
+        this.renderer = renderer;
         
-        window.addEventListener('resize', handleResize);
-        handleResize();
+        this.spaceScene = new SpaceScene(scene, camera);
+        this.cameraController = new CameraController(this.camera, this.renderer, this.scene);
+        this.spaceScene.setCameraController(this.cameraController);
+        this.renderSystem.setActiveScene(this.spaceScene);
+        
+        const orbitButton = document.getElementById('toggleOrbit');
+        if (orbitButton) {
+            orbitButton.classList.add('active'); // Começa ativo pois a câmera começa em modo cinematográfico
+            orbitButton.addEventListener('click', () => {
+                this.cameraController.toggleCinematicMode();
+            });
+        }
 
-        // Configurar loop de animação
-        const animate = () => {
-            requestAnimationFrame(animate);
-            if (this.scene) {
-                this.scene.update();
-            }
-            cameraController.update();
-            renderer.render(scene, camera);
-        };
-        animate();
-
-        console.log('✅ Cena 3D configurada com sucesso');
+        this.renderSystem.animate();
     }
 
     displayCharacters() {
@@ -226,25 +188,23 @@ class CharacterSelector {
         );
 
         // Atualizar preview 3D com todos os dados do personagem
-        if (this.scene) {
+        if (this.spaceScene) {
             try {
-                console.log('Dados do personagem para atualização:', character);
-
-                // Atualizar modelo com os dados exatos do banco
-                this.scene.updateCharacterModel({
-                    name: character.name,
-                    mainColor: character.main_color,  // Usar main_color do banco
-                    skinColor: character.skin_color,  // Usar skin_color do banco
-                    accentColor: character.accent_color, // Usar accent_color do banco
-                    topRadius: parseFloat(character.top_radius),  // Usar top_radius do banco
-                    bottomRadius: parseFloat(character.bottom_radius)  // Usar bottom_radius do banco
-                });
+                console.log('Atualizando modelo 3D:', character);
                 
+                this.spaceScene.updateCharacterModel({
+                    name: character.name,
+                    mainColor: character.mainColor || character.main_color,
+                    skinColor: character.skinColor || character.skin_color,
+                    accentColor: character.accentColor || character.accent_color,
+                    topRadius: parseFloat(character.topRadius || character.top_radius || 0.75),
+                    bottomRadius: parseFloat(character.bottomRadius || character.bottom_radius || 0.75)
+                });
             } catch (error) {
-                console.error('❌ Erro ao atualizar preview 3D:', error);
+                console.error('Erro ao atualizar preview 3D:', error);
             }
         } else {
-            console.warn('⚠️ Cena 3D não inicializada');
+            console.warn('SpaceScene não está inicializada');
         }
 
         // Habilitar botão de jogar
@@ -330,7 +290,7 @@ class CharacterSelector {
     }
 }
 
-// Inicialização com mais logs e alerts
+// Inicialização
 document.addEventListener('DOMContentLoaded', () => {
     const initialState = {
         localStorage: {

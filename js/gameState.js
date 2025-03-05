@@ -1,9 +1,9 @@
+import { RenderSystem } from './core/renderSystem.js';
+
 export const gameState = {
     currentCharacter: null,
     characters: [],
-    scene: null,
-    camera: null,
-    renderer: null,
+    renderSystem: null,
 
     loadCharacters() {
         try {
@@ -40,30 +40,12 @@ export const gameState = {
     },
 
     initializeScene(canvas, container) {
-        // Criar cena
-        this.scene = new THREE.Scene();
-        this.scene.background = new THREE.Color(0x000000);
-
-        // Configurar câmera
-        const width = container.clientWidth;
-        const height = container.clientHeight;
-        this.camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
-        this.camera.position.z = 5;
-
-        // Configurar renderer
-        this.renderer = new THREE.WebGLRenderer({
-            canvas: canvas,
-            antialias: true
-        });
-        this.renderer.setSize(width, height);
+        this.renderSystem = RenderSystem.getInstance();
+        const { scene, camera, renderer } = this.renderSystem.initialize(canvas, container);
         
-        // Configurar controles básicos
-        this.controls = new THREE.OrbitControls(this.camera, canvas);
-        this.controls.enableDamping = true;
-        this.controls.dampingFactor = 0.05;
-
-        // Adicionar redimensionamento responsivo
-        window.addEventListener('resize', () => this.handleResize(container));
+        this.scene = scene;
+        this.camera = camera;
+        this.renderer = renderer;
 
         return true;
     },

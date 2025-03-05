@@ -1,4 +1,6 @@
-import * as THREE from 'three';
+import { THREE } from '../core/three.js';
+import { MaterialSystem } from '../core/materialSystem.js';
+import { EyeTypes, createEye } from '../character/eyeTypes.js'; // Corrigir importação
 
 // Classes e funções compartilhadas
 export class Character {
@@ -18,6 +20,8 @@ export class Character {
             rightHand: null,
             back: null
         };
+        this.materialSystem = MaterialSystem.getInstance();
+        this.eyeType = data?.eye_type || data?.eyeType || 'friendly';
         
         console.log('Personagem inicializado com:', {
             name: this.name,
@@ -47,40 +51,51 @@ export class Character {
 
     // Método para criar a representação 3D do personagem
     create3DModel() {
-        try {
-            const group = new THREE.Group();
-            
-            // Corpo (cilindro)
-            const bodyGeometry = new THREE.CylinderGeometry(
-                this.topRadius,
-                this.bottomRadius,
-                2,
-                32
-            );
-            const bodyMaterial = new THREE.MeshPhongMaterial({
-                color: this.mainColor
-            });
-            const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
-            body.position.y = 1; // Ajustado para ficar mais alto
-            body.castShadow = true;
-            group.add(body);
-            
-            // Cabeça (esfera)
-            const headGeometry = new THREE.SphereGeometry(0.5, 32, 32);
-            const headMaterial = new THREE.MeshPhongMaterial({
-                color: this.skinColor
-            });
-            const head = new THREE.Mesh(headGeometry, headMaterial);
-            head.position.y = 2.5; // Ajustado para ficar acima do corpo
-            head.castShadow = true;
-            group.add(head);
-            
-            console.log('Modelo 3D do personagem criado com sucesso');
-            return group;
-        } catch (error) {
-            console.error('Erro ao criar modelo 3D:', error);
-            return null;
-        }
+        console.log('Criando modelo 3D com parâmetros:', {
+            mainColor: this.mainColor,
+            skinColor: this.skinColor,
+            topRadius: this.topRadius,
+            bottomRadius: this.bottomRadius
+        });
+
+        const group = new THREE.Group();
+
+        // Corpo
+        const bodyGeometry = new THREE.CylinderGeometry(
+            this.topRadius,
+            this.bottomRadius,
+            2,
+            32
+        );
+        const bodyMaterial = this.materialSystem.createCharacterMaterial(this.mainColor);
+        const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+        body.position.y = 0;
+        body.castShadow = true;
+        group.add(body);
+
+        // Cabeça
+        const headGeometry = new THREE.SphereGeometry(0.5, 32, 32);
+        const headMaterial = this.materialSystem.createCharacterMaterial(this.skinColor);
+        const head = new THREE.Mesh(headGeometry, headMaterial);
+        head.position.y = 1.5;
+        head.castShadow = true;
+        group.add(head);
+
+        // Adicionar olhos
+        const leftEye = createEye(this.eyeType, 'left');
+        const rightEye = createEye(this.eyeType, 'right');
+        
+        leftEye.position.set(-0.15, 1.6, 0.4);
+        rightEye.position.set(0.15, 1.6, 0.4);
+        
+        group.add(leftEye);
+        group.add(rightEye);
+
+        // Posicionar o grupo
+        group.position.y = 1;
+
+        console.log('Modelo 3D criado com sucesso');
+        return group; // Retornar o grupo diretamente, sem Promise
     }
 
     // Método para atualizar o modelo 3D existente
@@ -130,8 +145,32 @@ export class Character {
             equipment: data.equipment || this.equipment
         });
         
+        this.eyeType = data.eyeType || this.eyeType;
+
         console.log('Personagem atualizado:', this);
         return this;
+    }
+
+    updateEyes(type) {
+        if (!this.character3D) return;
+        
+        // Remover olhos existentes
+        const existingEyes = this.character3D.children.filter(child => 
+            child.userData.isEye === true
+        );
+        existingEyes.forEach(eye => this.character3D.remove(eye));
+
+        // Criar novos olhos
+        const leftEye = createEye(type, 'left');
+        const rightEye = createEye(type, 'right');
+
+        leftEye.position.set(-0.15, 1.6, 0.4);
+        rightEye.position.set(0.15, 1.6, 0.4);
+
+        this.character3D.add(leftEye);
+        this.character3D.add(rightEye);
+        
+        this.eyeType = type;
     }
 }
 
