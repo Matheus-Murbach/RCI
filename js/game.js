@@ -1,7 +1,7 @@
 import { THREE, OrbitControls } from './core/three.js';
 import { PlainScene } from './map/plainScene.js';
 import { CameraController } from './cameraControllerLobby.js';
-import { Character } from './character.js';
+import { Character } from './character/character.js';
 
 class Game {
     constructor() {
@@ -34,8 +34,19 @@ class Game {
             const characterData = JSON.parse(savedCharacter);
             console.log('📝 Dados do personagem:', characterData);
             
-            // Criar instância do personagem com os dados carregados
-            this.character = new Character(characterData);
+            // Criar instância do personagem mantendo os dados originais do banco
+            this.character = new Character({
+                id: characterData.id,
+                name: characterData.name,
+                face_expression: characterData.face_expression,
+                main_color: characterData.main_color,
+                skin_color: characterData.skin_color,
+                accent_color: characterData.accent_color,
+                top_radius: characterData.top_radius,
+                bottom_radius: characterData.bottom_radius,
+                userId: characterData.user_id
+            });
+            
             console.log('✅ Personagem criado:', this.character);
             
             // Inicializar Three.js primeiro

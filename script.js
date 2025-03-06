@@ -1,34 +1,4 @@
-class Character {
-    constructor(name, mainColor, skinColor, accentColor) {
-        this.name = name;
-        this.mainColor = mainColor;
-        this.skinColor = skinColor;
-        this.accentColor = accentColor;
-        this.equipment = {
-            head: null,
-            leftHand: null,
-            rightHand: null,
-            back: null
-        };
-    }
-
-    equipItem(item) {
-        if (this.equipment.hasOwnProperty(item.slot)) {
-            this.equipment[item.slot] = item;
-            return true;
-        }
-        return false;
-    }
-
-    unequipItem(slot) {
-        if (this.equipment.hasOwnProperty(slot)) {
-            const item = this.equipment[slot];
-            this.equipment[slot] = null;
-            return item;
-        }
-        return null;
-    }
-}
+import { Character, DEFAULT_CHARACTER } from './js/character/character.js';
 
 class Item {
     constructor(name, slot) {
@@ -52,23 +22,18 @@ const gameState = {
     currentCharacter: null
 }
 
-// Adicione estas variáveis no início do arquivo se ainda não existirem
-let mainColor = '#FF0000';
-let skinColor = '#FFA07A';
-let accentColor = '#0000FF';
-let topRadius = 0.75;    // Modificado de 0.5 para 0.75
-let bottomRadius = 0.75; // Modificado de 1.0 para 0.75
-let character3D = null; // Adicione esta variável global no início do arquivo
+// Remover variáveis duplicadas e usar as do DEFAULT_CHARACTER
+let character3D = null; 
 
 // Mover para o escopo global, antes de todas as outras funções
 function createCharacter3D(options = {}) {
     const group = new THREE.Group();
     
     const {
-        topRadius = 0.75,
-        bottomRadius = 0.75,
-        mainColor = '#FF0000',
-        skinColor = '#FFA07A'
+        topRadius = DEFAULT_CHARACTER.topRadius,
+        bottomRadius = DEFAULT_CHARACTER.bottomRadius,
+        mainColor = DEFAULT_CHARACTER.mainColor,
+        skinColor = DEFAULT_CHARACTER.skinColor
     } = options;
     
     // Corpo (cone)
@@ -442,14 +407,13 @@ function setupEquipmentSlots() {
 }
 
 function resetCharacterCreation() {
-    // Reset das cores
-    mainColor = '#FF0000';
-    skinColor = '#FFA07A';
-    accentColor = '#0000FF';
+    document.getElementById('mainColor').value = DEFAULT_CHARACTER.mainColor;
+    document.getElementById('skinColor').value = DEFAULT_CHARACTER.skinColor;
+    document.getElementById('accentColor').value = DEFAULT_CHARACTER.accentColor;
+    document.getElementById('charName').value = DEFAULT_CHARACTER.name;
     
-    // Reset dos raios
-    topRadius = 0.75;    // Modificado de 0.5 para 0.75
-    bottomRadius = 0.75; // Modificado de 1.0 para 0.75
+    topRadius = DEFAULT_CHARACTER.topRadius;
+    bottomRadius = DEFAULT_CHARACTER.bottomRadius;
     
     // Reset dos inputs visuais
     document.getElementById('mainColor').value = mainColor;

@@ -185,7 +185,7 @@ export class SpaceScene extends BaseScene {
     createSun() {
         const config = {
             plasmaRadius: 450,
-            plasmaCount: 75000,
+            plasmaCount: 80000,
             plasmaSize: {min: 5, max: 6},
             // Ajustar posição para ser consistente em todas as cenas
             position: new THREE.Vector3(-600, 150, -2000), // Modificado Y de 300 para 150 e Z de -1500 para -2000
@@ -795,9 +795,6 @@ export class SpaceScene extends BaseScene {
         }
 
         // Animações ou atualizações contínuas aqui
-        if (this.characterModel) {
-            this.characterModel.rotation.y += 0.01;
-        }
     }
 
     // Método para ajustar a velocidade global
@@ -939,59 +936,4 @@ export class SpaceScene extends BaseScene {
         return texture;
     }
 
-    updateCharacterModel(character) {
-        console.log('🎮 Atualizando modelo do personagem:', character);
-
-        try {
-            if (this.characterModel) {
-                this.scene.remove(this.characterModel);
-            }
-
-            const group = new THREE.Group();
-            
-            // Corpo (cilindro) com material melhorado
-            const bodyGeometry = new THREE.CylinderGeometry(
-                character.topRadius || 0.75,
-                character.bottomRadius || 0.75,
-                2,
-                32
-            );
-            const bodyMaterial = new THREE.MeshStandardMaterial({
-                color: new THREE.Color(character.mainColor),
-                roughness: 0.3,
-                metalness: 0.4,
-                envMapIntensity: 1.2,
-                flatShading: false
-            });
-            const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
-            body.position.y = -0.5;
-            body.castShadow = true;
-            body.receiveShadow = true;
-            group.add(body);
-            
-            // Cabeça (esfera) com material melhorado
-            const headGeometry = new THREE.SphereGeometry(0.5, 32, 32);
-            const headMaterial = new THREE.MeshStandardMaterial({
-                color: new THREE.Color(character.skinColor),
-                roughness: 0.2,
-                metalness: 0.3,
-                envMapIntensity: 1.2,
-                flatShading: false
-            });
-            const head = new THREE.Mesh(headGeometry, headMaterial);
-            head.position.y = 1;
-            head.castShadow = true;
-            head.receiveShadow = true;
-            group.add(head);
-
-            group.position.set(0, 0, 0); 
-
-            this.characterModel = group;
-            this.scene.add(this.characterModel);
-
-            console.log('✅ Modelo atualizado com sucesso');
-        } catch (error) {
-            console.error('❌ Erro ao atualizar modelo:', error);
-        }
-    }
 }

@@ -1,21 +1,14 @@
-import { THREE } from './core/three.js';
 import { Database } from './database/database.js';
 import { authGuard } from './auth/authGuard.js';
-import { gameState } from './gameState.js';
-import { SpaceScene } from './map/spaceScene.js';
-import { CameraController } from './cameraControllerLobby.js';
 import { Character } from './character/character.js';
-import { RenderSystem } from './core/renderSystem.js';
+import { CharacterPreviewController } from './character/characterPreviewController.js';
 
 class CharacterSelector {
     constructor() {
         this.db = new Database();
-        this.scene = null;
-        this.camera = null;
-        this.renderer = null;
         this.selectedCharacter = null;
         this.characters = [];
-        this.renderSystem = RenderSystem.getInstance();
+        this.previewController = null;
     }
 
     async initialize() {
@@ -73,41 +66,22 @@ class CharacterSelector {
 
     async loadAndDisplayCharacters() {
         const userId = authGuard.getActiveUserId();
-        if (!userId) {
-            console.error('❌ ID do usuário não encontrado');
-            setTimeout(() => window.location.replace('/pages/login.html'), 2000);
-            return;
-        }
+        console.log('👤 Carregando personagens para usuário:', userId);
 
-        console.log('🔍 Carregando personagens para usuário:', userId);
         try {
-            // Força uma nova busca no banco de dados
-            const freshCharacters = await this.db.getCharactersByUserId(userId);
-            console.log('📥 Personagens recebidos:', freshCharacters);
+            const characters = await this.db.getCharactersByUserId(userId);
+            console.log('📥 Personagens recebidos do banco:', characters);
 
-            if (!Array.isArray(freshCharacters)) {
-                console.error('❌ Resposta inválida do banco de dados');
-                this.characters = [];
-            } else {
-                // Atualiza a lista local com os dados mais recentes
-                this.characters = [...freshCharacters];
-            }
+            this.characters = characters.map(charData => {
+                console.log('🔄 Convertendo dados do personagem:', charData.name);
+                return new Character(charData);
+            });
 
-            if (this.characters.length === 0) {
-                console.log('⚠️ Nenhum personagem encontrado');
-                setTimeout(() => {
-                    console.log('🔄 Redirecionando para criação de personagem...');
-                    window.location.replace('create.html');
-                }, 3000);
-                return;
-            }
-
-            console.log('✅ Exibindo personagens encontrados');
+            console.log('✅ Total de personagens carregados:', this.characters.length);
             this.displayCharacters();
 
-            // Selecionar automaticamente o primeiro personagem
             if (this.characters.length > 0) {
-                console.log('🎯 Selecionando primeiro personagem automaticamente');
+                console.log('🎯 Selecionando primeiro personagem');
                 this.selectCharacter(this.characters[0]);
             }
 
@@ -122,30 +96,10 @@ class CharacterSelector {
         const container = canvas.parentElement;
         
         if (!canvas || !container) {
-            console.error('❌ Canvas não encontrado');
             throw new Error('Canvas não encontrado');
         }
 
-        const { scene, camera, renderer } = this.renderSystem.initialize(canvas, container);
-        
-        this.scene = scene;
-        this.camera = camera;
-        this.renderer = renderer;
-        
-        this.spaceScene = new SpaceScene(scene, camera);
-        this.cameraController = new CameraController(this.camera, this.renderer, this.scene);
-        this.spaceScene.setCameraController(this.cameraController);
-        this.renderSystem.setActiveScene(this.spaceScene);
-        
-        const orbitButton = document.getElementById('toggleOrbit');
-        if (orbitButton) {
-            orbitButton.classList.add('active'); // Começa ativo pois a câmera começa em modo cinematográfico
-            orbitButton.addEventListener('click', () => {
-                this.cameraController.toggleCinematicMode();
-            });
-        }
-
-        this.renderSystem.animate();
+        this.previewController = new CharacterPreviewController(canvas, container);
     }
 
     displayCharacters() {
@@ -179,35 +133,22 @@ class CharacterSelector {
     }
 
     selectCharacter(character) {
-        console.log('🎮 Selecionando personagem:', character);
+        console.log('🎮 Selecionando personagem:', character.name);
         this.selectedCharacter = character;
         
-        // Atualizar UI
+        // Atualizar seleção visual
         document.querySelectorAll('.character-option').forEach(el => 
             el.classList.toggle('selected', el.querySelector('h3').textContent === character.name)
         );
 
-        // Atualizar preview 3D com todos os dados do personagem
-        if (this.spaceScene) {
-            try {
-                console.log('Atualizando modelo 3D:', character);
-                
-                this.spaceScene.updateCharacterModel({
-                    name: character.name,
-                    mainColor: character.mainColor || character.main_color,
-                    skinColor: character.skinColor || character.skin_color,
-                    accentColor: character.accentColor || character.accent_color,
-                    topRadius: parseFloat(character.topRadius || character.top_radius || 0.75),
-                    bottomRadius: parseFloat(character.bottomRadius || character.bottom_radius || 0.75)
-                });
-            } catch (error) {
-                console.error('Erro ao atualizar preview 3D:', error);
-            }
+        // Garantir que o preview seja atualizado
+        if (this.previewController) {
+            console.log('🎨 Atualizando preview para:', character.name);
+            this.previewController.updateCharacter(character);
         } else {
-            console.warn('SpaceScene não está inicializada');
+            console.warn('⚠️ PreviewController não encontrado');
         }
 
-        // Habilitar botão de jogar
         document.getElementById('playButton').disabled = false;
     }
 

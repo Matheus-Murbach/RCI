@@ -1,35 +1,84 @@
 import { THREE } from '../core/three.js';
 import { MaterialSystem } from '../core/materialSystem.js';
-import { EyeTypes, createEye } from '../character/eyeTypes.js'; // Corrigir importação
 
-// Classes e funções compartilhadas
+// Constantes globais para criação de personagem
+export const DEFAULT_CHARACTER = {
+    mainColor: '#FF0000',
+    skinColor: '#FFA07A', 
+    accentColor: '#000000',
+    topRadius: 0.75,
+    bottomRadius: 0.75,
+    faceExpression: "'-'",
+    name: '',
+    equipment: {
+        head: null,
+        leftHand: null,
+        rightHand: null,
+        back: null
+    }
+};
+
 export class Character {
-    constructor(data) {
-        // Aceitar dados do banco ou valores padrão
-        this.name = data?.name || '';
-        this.mainColor = data?.main_color || data?.mainColor || '#FF0000';
-        this.skinColor = data?.skin_color || data?.skinColor || '#FFA07A';
-        this.accentColor = data?.accent_color || data?.accentColor || '#0000FF';
-        this.topRadius = data?.top_radius || data?.topRadius || 0.75;
-        this.bottomRadius = data?.bottom_radius || data?.bottomRadius || 0.75;
-        this.id = data?.id || null;
-        this.userId = data?.userId || null;
-        this.equipment = {
-            head: null,
-            leftHand: null,
-            rightHand: null,
-            back: null
-        };
-        this.materialSystem = MaterialSystem.getInstance();
-        this.eyeType = data?.eye_type || data?.eyeType || 'friendly';
+    constructor(data = {}) {
+        console.log('🎭 Construindo personagem com dados brutos:', data);
         
-        console.log('Personagem inicializado com:', {
-            name: this.name,
-            mainColor: this.mainColor,
-            skinColor: this.skinColor,
-            topRadius: this.topRadius,
-            bottomRadius: this.bottomRadius
+        // Usar dados do banco com fallback para valores padrão
+        this.id = data.id;
+        this.userId = data.userId || data.user_id;
+        this.name = data.name;
+        this.mainColor = data.mainColor || data.main_color || DEFAULT_CHARACTER.mainColor;
+        this.skinColor = data.skinColor || data.skin_color || DEFAULT_CHARACTER.skinColor;
+        this.accentColor = data.accentColor || data.accent_color || DEFAULT_CHARACTER.accentColor;
+        this.topRadius = parseFloat(data.topRadius || data.top_radius) || DEFAULT_CHARACTER.topRadius;
+        this.bottomRadius = parseFloat(data.bottomRadius || data.bottom_radius) || DEFAULT_CHARACTER.bottomRadius;
+        this.faceExpression = data.faceExpression || data.face_expression || DEFAULT_CHARACTER.faceExpression;
+        this.equipment = data.equipment || data.equipment_data || DEFAULT_CHARACTER.equipment;
+        
+        this.materialSystem = MaterialSystem.getInstance();
+        this.character3D = null;
+
+        console.log('✨ Personagem construído:', this);
+    }
+
+    createHead() {
+        const headGeometry = new THREE.SphereGeometry(0.5, 32, 32);
+        const canvas = document.createElement('canvas');
+        canvas.width = 512;
+        canvas.height = 256;
+        const ctx = canvas.getContext('2d');
+
+        // Cor base da pele sem gradientes
+        ctx.fillStyle = this.skinColor;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.fillStyle = this.accentColor; 
+        ctx.font = "bold 64px monospace";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+
+        // Garantir que a expressão facial nunca seja undefined
+        const expression = this.faceExpression;
+        ctx.fillText(expression, canvas.width / 2, canvas.height / 2);
+
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.needsUpdate = true;
+
+        const headMaterial = new THREE.MeshStandardMaterial({
+            map: texture,
+            roughness: 0.2,
+            metalness: 0.3,
+            envMapIntensity: 1.2,
+            transparent: true,
+            alphaTest: 0.5
         });
+
+        const head = new THREE.Mesh(headGeometry, headMaterial);
+        head.position.y = 1.5;
+        head.castShadow = true;
+        head.name = 'head';
+        head.rotation.y = Math.PI;
+
+        return head;
     }
 
     equipItem(item) {
@@ -51,51 +100,36 @@ export class Character {
 
     // Método para criar a representação 3D do personagem
     create3DModel() {
-        console.log('Criando modelo 3D com parâmetros:', {
-            mainColor: this.mainColor,
-            skinColor: this.skinColor,
-            topRadius: this.topRadius,
-            bottomRadius: this.bottomRadius
-        });
-
         const group = new THREE.Group();
 
-        // Corpo
+        // Corpo com dimensões corretas
         const bodyGeometry = new THREE.CylinderGeometry(
-            this.topRadius,
-            this.bottomRadius,
+            this.topRadius || DEFAULT_CHARACTER.topRadius,
+            this.bottomRadius || DEFAULT_CHARACTER.bottomRadius,
             2,
             32
         );
-        const bodyMaterial = this.materialSystem.createCharacterMaterial(this.mainColor);
+        
+        const bodyMaterial = new THREE.MeshStandardMaterial({
+            color: this.mainColor || DEFAULT_CHARACTER.mainColor,
+            roughness: 0.3,
+            metalness: 0.4,
+            envMapIntensity: 1.2
+        });
+        
         const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
         body.position.y = 0;
         body.castShadow = true;
+        body.receiveShadow = true;
         group.add(body);
 
-        // Cabeça
-        const headGeometry = new THREE.SphereGeometry(0.5, 32, 32);
-        const headMaterial = this.materialSystem.createCharacterMaterial(this.skinColor);
-        const head = new THREE.Mesh(headGeometry, headMaterial);
-        head.position.y = 1.5;
-        head.castShadow = true;
+        // Cabeça com textura facial
+        const head = this.createHead();
+        head.position.y = 1.5; // Ajustado para posição correta
         group.add(head);
 
-        // Adicionar olhos
-        const leftEye = createEye(this.eyeType, 'left');
-        const rightEye = createEye(this.eyeType, 'right');
-        
-        leftEye.position.set(-0.15, 1.6, 0.4);
-        rightEye.position.set(0.15, 1.6, 0.4);
-        
-        group.add(leftEye);
-        group.add(rightEye);
-
-        // Posicionar o grupo
-        group.position.y = 1;
-
-        console.log('Modelo 3D criado com sucesso');
-        return group; // Retornar o grupo diretamente, sem Promise
+        this.character3D = group;
+        return group;
     }
 
     // Método para atualizar o modelo 3D existente
@@ -105,11 +139,8 @@ export class Character {
         const body = model.children[0];
         const head = model.children[1];
 
-        // Atualizar cores
+        // Atualizar corpo
         body.material.color.setStyle(this.mainColor);
-        head.material.color.setStyle(this.skinColor);
-
-        // Atualizar geometria do corpo
         const newGeometry = new THREE.CylinderGeometry(
             this.topRadius,
             this.bottomRadius,
@@ -118,6 +149,35 @@ export class Character {
         );
         body.geometry.dispose();
         body.geometry = newGeometry;
+
+        // Criar nova cabeça com textura atualizada
+        const newHead = this.createHead();
+        head.material = newHead.material;
+        head.material.needsUpdate = true;
+    }
+
+    updateShape(topRadius, bottomRadius) {
+        this.topRadius = topRadius;
+        this.bottomRadius = bottomRadius;
+        if (this.character3D) {
+            this.update3DModel(this.character3D);
+        }
+    }
+
+    updateColors(mainColor, skinColor, accentColor) {
+        if (mainColor) this.mainColor = mainColor;
+        if (skinColor) this.skinColor = skinColor;
+        if (accentColor) this.accentColor = accentColor;
+        if (this.character3D) {
+            this.update3DModel(this.character3D);
+        }
+    }
+
+    updateFaceExpression(expression) {
+        this.faceExpression = expression;
+        if (this.character3D) {
+            this.update3DModel(this.character3D);
+        }
     }
 
     // Método para salvar o personagem
@@ -135,42 +195,55 @@ export class Character {
     }
 
     update(data) {
-        Object.assign(this, {
-            name: data.name || this.name,
-            mainColor: data.mainColor || this.mainColor,
-            skinColor: data.skinColor || this.skinColor,
-            accentColor: data.accentColor || this.accentColor,
-            topRadius: data.topRadius || this.topRadius,
-            bottomRadius: data.bottomRadius || this.bottomRadius,
-            equipment: data.equipment || this.equipment
-        });
-        
-        this.eyeType = data.eyeType || this.eyeType;
+        let needsUpdate = false;
 
-        console.log('Personagem atualizado:', this);
+        if (data.name) {
+            this.name = data.name;
+            needsUpdate = true;
+        }
+        if (data.main_color || data.mainColor) {
+            this.mainColor = data.main_color || data.mainColor;
+            needsUpdate = true;
+        }
+        if (data.skin_color || data.skinColor) {
+            this.skinColor = data.skin_color || data.skinColor;
+            needsUpdate = true;
+        }
+        if (data.accent_color || data.accentColor) {
+            this.accentColor = data.accent_color || data.accentColor;
+            needsUpdate = true;
+        }
+        if (data.top_radius || data.topRadius) {
+            this.topRadius = data.top_radius || data.topRadius;
+            needsUpdate = true;
+        }
+        if (data.bottom_radius || data.bottomRadius) {
+            this.bottomRadius = data.bottom_radius || data.bottomRadius;
+            needsUpdate = true;
+        }
+        if (data.face_expression || data.faceExpression) {
+            // Garantir que a expressão facial seja preservada com fallback
+            this.faceExpression = data.faceExpression || data.face_expression || "'-'";
+            needsUpdate = true;
+        }
+        if (data.equipment) {
+            this.equipment = data.equipment;
+            needsUpdate = true;
+        }
+
+        // Atualizar o modelo 3D apenas uma vez se houver mudanças
+        if (needsUpdate && this.character3D) {
+            this.update3DModel(this.character3D);
+        }
+
         return this;
     }
 
-    updateEyes(type) {
-        if (!this.character3D) return;
-        
-        // Remover olhos existentes
-        const existingEyes = this.character3D.children.filter(child => 
-            child.userData.isEye === true
-        );
-        existingEyes.forEach(eye => this.character3D.remove(eye));
-
-        // Criar novos olhos
-        const leftEye = createEye(type, 'left');
-        const rightEye = createEye(type, 'right');
-
-        leftEye.position.set(-0.15, 1.6, 0.4);
-        rightEye.position.set(0.15, 1.6, 0.4);
-
-        this.character3D.add(leftEye);
-        this.character3D.add(rightEye);
-        
-        this.eyeType = type;
+    reset() {
+        Object.assign(this, DEFAULT_CHARACTER);
+        if (this.character3D) {
+            this.update3DModel(this.character3D);
+        }
     }
 }
 
@@ -181,22 +254,6 @@ export class Item {
     }
 }
 
-// Itens disponíveis no jogo
-export const availableItems = [
-    new Item("Chapéu", "head"),
-    new Item("Capacete", "head"),
-    new Item("Espada", "rightHand"),
-    new Item("Escudo", "leftHand"),
-    new Item("Cajado", "rightHand"),
-    new Item("Mochila", "back"),
-    new Item("Capa", "back")
-];
-
-// Função compartilhada para criar personagem 3D
-function createCharacter3D(options = {}) {
-    // ... código existente da função createCharacter3D ...
-}
-
 // Funções de utilidade compartilhadas
 function loadCharacters() {
     const saved = localStorage.getItem('characters');
@@ -204,8 +261,4 @@ function loadCharacters() {
         gameState.characters = JSON.parse(saved);
     }
     return gameState.characters;
-}
-
-function saveCharacters() {
-    localStorage.setItem('characters', JSON.stringify(gameState.characters));
 }

@@ -17,6 +17,19 @@
             <div class="basic-info">
                 <input type="text" id="charName" placeholder="Nome do Personagem">
             </div>
+            
+            <!-- Substituir a seção eyes-section por: -->
+            <div class="face-section">
+                <h3>Rosto do Personagem</h3>
+                <div class="face-input">
+                    <input type="text" 
+                           id="faceExpression" 
+                           maxlength="5" 
+                           value="'-'" 
+                           placeholder="Digite o rosto:"
+                           pattern="^.{1,5}$">
+                </div>
+            </div>
 
             <!-- Seção de cores -->
             <div class="color-section">
@@ -28,11 +41,11 @@
                     </div>
                     <div class="color-item">
                         <label for="skinColor">Cor da Pele</label>
-                        <input type="color" id="skinColor" value="#FFA07A">
+                        <input type="color" id="skinColor" value="#c86432">
                     </div>
                     <div class="color-item">
-                        <label for="accentColor">Cor Destaque</label>
-                        <input type="color" id="accentColor" value="#0000FF">
+                        <label for="accentColor">Cor do Rosto</label>
+                        <input type="color" id="accentColor" value="#000000">
                     </div>
                 </div>
             </div>
@@ -48,33 +61,6 @@
                         <span>Superior: <span id="topRadiusValue" class="radius-value">0.75</span></span>
                         <span>Inferior: <span id="bottomRadiusValue" class="radius-value">0.75</span></span>
                     </div>
-                </div>
-            </div>
-
-            <!-- Adicionar dentro da controls-section, após a shape-section -->
-            <div class="eyes-section">
-                <h3>Expressão dos Olhos</h3>
-                <div class="eye-options">
-                    <button class="eye-option active" data-eye-type="normal">
-                        <span class="eye-text">( ° ° )</span>
-                        Normal
-                    </button>
-                    <button class="eye-option" data-eye-type="happy">
-                        <span class="eye-text">(^^)</span>
-                        Feliz
-                    </button>
-                    <button class="eye-option" data-eye-type="angry">
-                        <span class="eye-text">( ` ´ )</span>
-                        Bravo
-                    </button>
-                    <button class="eye-option" data-eye-type="sad">
-                        <span class="eye-text">( ' ' )</span>
-                        Triste
-                    </button>
-                    <button class="eye-option" data-eye-type="sleepy">
-                        <span class="eye-text">( - - )</span>
-                        Sonolento
-                    </button>
                 </div>
             </div>
 

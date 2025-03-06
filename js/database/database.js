@@ -1,3 +1,5 @@
+import { DEFAULT_CHARACTER } from '../character/character.js';
+
 export class Database {
     constructor() {
         this.apiUrl = null;
@@ -205,9 +207,8 @@ export class Database {
 
     async getCharactersByUserId(userId) {
         try {
-            console.log('🔍 Buscando personagens para usuário:', userId);
+            console.log('🔍 Buscando personagens no banco para usuário:', userId);
             
-            // Usar query parameters em vez de headers
             const response = await this.query(`characters?userId=${userId}`, {
                 method: 'GET',
                 headers: {
@@ -215,35 +216,37 @@ export class Database {
                 }
             });
 
-            console.log('📥 Resposta bruta do servidor:', response);
+            console.log('📊 Resposta bruta do servidor:', response);
 
-            // Validar resposta
-            if (!response || (!response.data && !response.characters)) {
-                console.warn('⚠️ Formato de resposta inválido:', response);
-                return [];
-            }
-
-            // Tentar obter os personagens da resposta
             const charactersData = response.data || response.characters || [];
             const characters = Array.isArray(charactersData) ? charactersData : [charactersData];
             
-            const mappedCharacters = characters.map(char => ({
-                id: char.id,
-                userId: char.user_id || userId,
-                name: char.name,
-                main_color: char.main_color || char.mainColor,
-                skin_color: char.skin_color || char.skinColor,
-                accent_color: char.accent_color || char.accentColor,
-                top_radius: char.top_radius || char.topRadius || 0.75,
-                bottom_radius: char.bottom_radius || char.bottomRadius || 0.75
-            }));
+            const mappedCharacters = characters.map(char => {
+                console.log('🔄 Processando dados brutos do personagem:', char);
+                const mapped = {
+                    id: char.id,
+                    userId: char.userId || char.user_id,
+                    name: char.name,
+                    mainColor: char.mainColor || char.main_color,
+                    skinColor: char.skinColor || char.skin_color,
+                    accentColor: char.accentColor || char.accent_color,
+                    topRadius: char.topRadius || char.top_radius,
+                    bottomRadius: char.bottomRadius || char.bottom_radius,
+                    faceExpression: char.faceExpression || char.face_expression,
+           equipment: typeof char.equipment === 'string' ? 
+                        JSON.parse(char.equipment) : 
+                        (char.equipment || char.equipment_data)
+                };
+                console.log('✨ Dados do personagem mapeados:', mapped);
+                return mapped;
+            });
 
-            console.log('✅ Personagens mapeados:', mappedCharacters);
+            console.log('✅ Total de personagens processados:', mappedCharacters.length);
             return mappedCharacters;
 
         } catch (error) {
             console.error('❌ Erro ao buscar personagens:', error);
-            throw new Error(`Erro ao buscar personagens: ${error.message}`);
+            throw error;
         }
     }
 
@@ -263,18 +266,14 @@ export class Database {
             // Garantir que todos os dados necessários estão presentes
             const validatedData = {
                 userId: characterData.userId,
-                name: characterData.name,
-                mainColor: characterData.mainColor || '#FF0000',
-                skinColor: characterData.skinColor || '#FFA07A',
-                accentColor: characterData.accentColor || '#0000FF',
-                topRadius: characterData.topRadius || 0.75,
-                bottomRadius: characterData.bottomRadius || 0.75,
-                equipment: characterData.equipment || {
-                    head: null,
-                    leftHand: null,
-                    rightHand: null,
-                    back: null
-                }
+                name: characterData.name || DEFAULT_CHARACTER.name,
+                mainColor: characterData.mainColor || DEFAULT_CHARACTER.mainColor,
+                skinColor: characterData.skinColor || DEFAULT_CHARACTER.skinColor,
+                accentColor: characterData.accentColor || DEFAULT_CHARACTER.accentColor,
+                topRadius: characterData.topRadius || DEFAULT_CHARACTER.topRadius,
+                bottomRadius: characterData.bottomRadius || DEFAULT_CHARACTER.bottomRadius,
+                faceExpression: characterData.faceExpression || DEFAULT_CHARACTER.faceExpression,
+                equipment: characterData.equipment || DEFAULT_CHARACTER.equipment
             };
 
             console.log('📤 Enviando dados validados:', validatedData);

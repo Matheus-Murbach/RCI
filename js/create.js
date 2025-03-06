@@ -1,5 +1,5 @@
 import { THREE } from './core/three.js';
-import { Character } from './character/character.js';
+import { Character, DEFAULT_CHARACTER } from './character/character.js';
 import { authGuard } from './auth/authGuard.js';
 import { Database } from './database/database.js';
 import { SpaceScene } from './map/spaceScene.js';
@@ -10,17 +10,27 @@ class CharacterCreator {
     constructor() {
         this.db = new Database();
         this.character3D = null;
-        this.currentCharacter = null;
+        this.currentCharacter = new Character({
+            main_color: DEFAULT_CHARACTER.mainColor,
+            skin_color: DEFAULT_CHARACTER.skinColor,
+            accent_color: DEFAULT_CHARACTER.accentColor,
+            top_radius: DEFAULT_CHARACTER.topRadius,
+            bottom_radius: DEFAULT_CHARACTER.bottomRadius,
+            face_expression: DEFAULT_CHARACTER.faceExpression,
+            equipment_data: DEFAULT_CHARACTER.equipment
+        });
         this.renderSystem = RenderSystem.getInstance();
-        
-        // Configurações padrão
-        this.mainColor = '#FF0000';
-        this.skinColor = '#FFA07A';
-        this.accentColor = '#0000FF';
-        this.topRadius = 0.75;
-        this.bottomRadius = 0.75;
         this.isDragging = false;
-        this.setupRadiusControl();
+        
+        // Usar valores do DEFAULT_CHARACTER
+        this.mainColor = DEFAULT_CHARACTER.mainColor;
+        this.skinColor = DEFAULT_CHARACTER.skinColor;
+        this.accentColor = DEFAULT_CHARACTER.accentColor;
+        this.topRadius = DEFAULT_CHARACTER.topRadius;
+        this.bottomRadius = DEFAULT_CHARACTER.bottomRadius;
+        this.faceExpression = DEFAULT_CHARACTER.faceExpression;
+
+        this.resetCharacterForm();
     }
 
     async initialize() {
@@ -67,14 +77,35 @@ class CharacterCreator {
             throw new Error('Canvas ou container não encontrados');
         }
 
-        // Inicializar renderização usando RenderSystem
         const { scene, camera, renderer } = this.renderSystem.initialize(canvas, previewSection);
         
         this.scene = scene;
         this.camera = camera;
         this.renderer = renderer;
         
-        // Inicializar SpaceScene
+        // Criando a luz SpotLight com configurações melhoradas
+        const spotlight = new THREE.SpotLight(0xffffff, 5);
+        spotlight.position.set(5, 5, 5);
+        spotlight.angle = Math.PI / 10;
+        spotlight.distance = 3;
+
+        // Adicionar target para o spotlight apontar para o personagem
+        const targetObject = new THREE.Object3D();
+        targetObject.position.set(0, 0, 0);
+        this.scene.add(targetObject);
+        spotlight.target = targetObject;
+        
+        // Ativar sombras no renderer
+        this.renderer.shadowMap.enabled = true;
+        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        
+        this.scene.add(spotlight);
+
+        // Adicionar luz ambiente suave para complementar
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+        this.scene.add(ambientLight);
+
+        // Resto da inicialização da cena
         this.spaceScene = new SpaceScene(scene, camera);
         
         // Configurar controles de câmera
@@ -105,21 +136,23 @@ class CharacterCreator {
         console.log('Inicializando personagem...');
         
         try {
-            this.currentCharacter = new Character(
-                "",
-                this.mainColor,
-                this.skinColor,
-                this.accentColor
-            );
-            
-            // Aguardar a criação do modelo 3D
             this.character3D = await this.currentCharacter.create3DModel();
+
             if (this.character3D && this.scene) {
+                // Ajustar posição inicial do personagem
+                this.character3D.position.set(0, -0.5, 0);
                 this.scene.add(this.character3D);
-                console.log('Personagem adicionado à cena');
+
+                // Forçar atualização inicial do modelo
+                this.currentCharacter.update3DModel(this.character3D);
+                console.log('Personagem inicializado com valores:', {
+                    mainColor: this.currentCharacter.mainColor,
+                    skinColor: this.currentCharacter.skinColor,
+                    accentColor: this.currentCharacter.accentColor,
+                    topRadius: this.currentCharacter.topRadius,
+                    bottomRadius: this.currentCharacter.bottomRadius
+                });
             }
-            
-            console.log('Personagem inicializado');
         } catch (error) {
             console.error('Erro ao criar personagem:', error);
             throw new Error('Falha ao criar modelo 3D do personagem');
@@ -216,6 +249,65 @@ class CharacterCreator {
                 this.currentCharacter.updateEyes(eyeType);
             });
         });
+
+        // Adicionar handler para expressão facial
+        document.getElementById('faceExpression').addEventListener('input', (e) => {
+            const expression = e.target.value;
+            if (this.currentCharacter) {
+                this.currentCharacter.updateFaceExpression(expression);
+            }
+        });
+
+        // Adicionar handlers para presets de expressões
+        document.querySelectorAll('.face-preset').forEach(button => {
+            button.addEventListener('click', () => {
+                const expression = button.dataset.face;
+                document.getElementById('faceExpression').value = expression;
+                if (this.currentCharacter) {
+                    this.currentCharacter.updateFaceExpression(expression);
+                }
+            });
+        });
+
+        // Simplificar handler da expressão facial
+        const faceInput = document.getElementById('faceExpression');
+        faceInput.addEventListener('input', (e) => {
+            if (this.currentCharacter) {
+                this.currentCharacter.faceExpression = e.target.value;
+                this.currentCharacter.update3DModel(this.character3D);
+            }
+        });
+
+        // Remover eventos duplicados de faceExpression
+        // Remover referências a updateFaceExpression
+        // Manter apenas o código acima para expressão facial
+
+        // Remover handlers antigos e substituir por uma versão simplificada
+        // Handler unificado para expressão facial
+        document.getElementById('faceExpression').addEventListener('input', (e) => {
+            if (this.currentCharacter) {
+                this.currentCharacter.faceExpression = e.target.value;
+                this.currentCharacter.update3DModel(this.character3D);
+            }
+        });
+
+        // Handlers para presets de expressões
+        document.querySelectorAll('.face-preset').forEach(button => {
+            button.addEventListener('click', () => {
+                const expression = button.dataset.face;
+                const faceInput = document.getElementById('faceExpression');
+                faceInput.value = expression;
+                if (this.currentCharacter) {
+                    this.currentCharacter.faceExpression = expression;
+                    this.currentCharacter.update3DModel(this.character3D);
+                }
+            });
+        });
+
+        // Remover outros handlers duplicados de faceExpression
+
+        // Adicionar setup do controle de raio
+        this.setupRadiusControl();
     }
 
     validateForm() {
@@ -256,7 +348,8 @@ class CharacterCreator {
                 accentColor: this.currentCharacter.accentColor,
                 topRadius: this.currentCharacter.topRadius,
                 bottomRadius: this.currentCharacter.bottomRadius,
-                equipment: this.currentCharacter.equipment
+                equipment: this.currentCharacter.equipment,
+                faceExpression: this.currentCharacter.faceExpression
             };
 
             console.log('Salvando personagem com dados atualizados:', characterData);
@@ -283,40 +376,21 @@ class CharacterCreator {
     }
 
     updateColor(colorType, value) {
-        switch(colorType) {
-            case 'mainColor':
-                this.mainColor = value;
-                this.currentCharacter.mainColor = value;
-                if (this.character3D) {
-                    this.character3D.children[0].material.color.setStyle(value);
-                }
-                break;
-            case 'skinColor':
-                this.skinColor = value;
-                this.currentCharacter.skinColor = value;
-                if (this.character3D) {
-                    this.character3D.children[1].material.color.setStyle(value);
-                }
-                break;
-            case 'accentColor':
-                this.accentColor = value;
-                this.currentCharacter.accentColor = value;
-                break;
-        }
-        console.log('Cores atualizadas:', {
-            mainColor: this.mainColor,
-            skinColor: this.skinColor,
-            accentColor: this.accentColor
-        });
+        this.currentCharacter.updateColors(
+            colorType === 'mainColor' ? value : null,
+            colorType === 'skinColor' ? value : null,
+            colorType === 'accentColor' ? value : null
+        );
     }
 
     setupRadiusControl() {
         const slider = document.getElementById('radiusSlider2D');
         const handle = document.getElementById('radiusHandle');
         
-        // Valores mínimo e máximo para os raios
-        const MIN_RADIUS = 0.5;
-        const MAX_RADIUS = 1.0;
+        if (!slider || !handle) {
+            console.error('Elementos do controle de raio não encontrados');
+            return;
+        }
 
         const updateRadius = (clientX, clientY) => {
             const rect = slider.getBoundingClientRect();
@@ -329,29 +403,25 @@ class CharacterCreator {
             x = Math.max(0, Math.min(1, x));
             y = Math.max(0, Math.min(1, y));
             
-            // Calcular raios com base nas posições
-            this.topRadius = MIN_RADIUS + (x * (MAX_RADIUS - MIN_RADIUS));
-            this.bottomRadius = MIN_RADIUS + ((1 - y) * (MAX_RADIUS - MIN_RADIUS));
-            
-            // Atualizar também no currentCharacter
-            this.currentCharacter.topRadius = this.topRadius;
-            this.currentCharacter.bottomRadius = this.bottomRadius;
-            
             // Atualizar posição do handle
             handle.style.left = `${x * 100}%`;
             handle.style.top = `${y * 100}%`;
+            
+            // Calcular e atualizar raios
+            this.topRadius = 0.5 + (x * 0.5); // 0.5 a 1.0
+            this.bottomRadius = 0.5 + ((1 - y) * 0.5); // 0.5 a 1.0
+            
+            if (this.currentCharacter) {
+                this.currentCharacter.topRadius = this.topRadius;
+                this.currentCharacter.bottomRadius = this.bottomRadius;
+            }
             
             // Atualizar valores exibidos
             document.getElementById('topRadiusValue').textContent = this.topRadius.toFixed(2);
             document.getElementById('bottomRadiusValue').textContent = this.bottomRadius.toFixed(2);
             
-            // Atualizar geometria do personagem
+            // Atualizar geometria
             this.updateCharacterShape();
-            
-            console.log('Forma atualizada:', {
-                topRadius: this.topRadius,
-                bottomRadius: this.bottomRadius
-            });
         };
 
         // Mouse events
@@ -388,26 +458,17 @@ class CharacterCreator {
     }
 
     updateCharacterShape() {
-        if (!this.character3D) return;
-
-        const body = this.character3D.children[0];
-        const newGeometry = new THREE.CylinderGeometry(
-            this.topRadius,
-            this.bottomRadius,
-            2,
-            32
-        );
-
-        // Atualizar geometria preservando materiais e transformações
-        const oldGeometry = body.geometry;
-        body.geometry = newGeometry;
-        oldGeometry.dispose(); // Limpar geometria antiga da memória
+        if (!this.currentCharacter) return;
+        this.currentCharacter.updateShape(this.topRadius, this.bottomRadius);
     }
 
     resetCharacterForm() {
-        // Resetar valores
-        this.topRadius = 0.75;
-        this.bottomRadius = 0.75;
+        // Usar valores do DEFAULT_CHARACTER para reset
+        this.mainColor = DEFAULT_CHARACTER.mainColor;
+        this.skinColor = DEFAULT_CHARACTER.skinColor;
+        this.accentColor = DEFAULT_CHARACTER.accentColor;
+        this.topRadius = DEFAULT_CHARACTER.topRadius;
+        this.bottomRadius = DEFAULT_CHARACTER.bottomRadius;
 
         // Atualizar posição do handle para o centro
         const handle = document.getElementById('radiusHandle');
@@ -480,7 +541,10 @@ function createCharacter3D(options = {}) {
         roughness: 0.2,          // Menor rugosidade para mais brilho
         metalness: 0.3,          // Metalicidade moderada
         envMapIntensity: 1.2,    // Aumentar intensidade de reflexão
-        flatShading: false       // Suavizar superfície
+        flatShading: false,      // Suavizar superfície
+        transparent: true,      // Adicionar suporte à transparência
+        alphaTest: 0.5,        // Ajustar teste alpha para melhor renderização
+        combine: THREE.MultiplyOperation  // Garantir que a cor base seja multiplicada com a textura
     });
     const head = new THREE.Mesh(headGeometry, headMaterial);
     head.position.y = 1;
@@ -488,7 +552,8 @@ function createCharacter3D(options = {}) {
     head.receiveShadow = true;
     group.add(head);
     
-    group.position.y = 1;
+    // Definir posição Y inicial correta
+    group.position.set(0, -9.6, 0);
     
     return group;
 }
@@ -516,20 +581,22 @@ function resetCharacterCreation() {
     
     // Atualizar preview 3D
     if (character3D) {
-        const body = character3D.children[0];
-        const head = character3D.children[1];
+        const body = character3D.children.find(child => !child.name); // corpo é o que não tem nome
+        const head = character3D.children.find(child => child.name === 'head');
         
-        body.material.color.setStyle(mainColor);
-        head.material.color.setStyle(skinColor);
-        
-        const newBodyGeometry = new THREE.CylinderGeometry(
-            topRadius,
-            bottomRadius,
-            2,
-            32
-        );
-        body.geometry.dispose();
-        body.geometry = newBodyGeometry;
+        if (body && head) {
+            body.material.color.setStyle(mainColor);
+            head.material.color.setStyle(skinColor);
+            
+            const newBodyGeometry = new THREE.CylinderGeometry(
+                Math.max(0.1, topRadius), // Evita valores zero ou negativos
+                Math.max(0.1, bottomRadius),
+                2,
+                32
+            );
+            body.geometry.dispose();
+            body.geometry = newBodyGeometry;
+        }
     }
 }
 

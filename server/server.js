@@ -10,6 +10,27 @@ const app = express();
 const PORT = 3000;
 const DB_PATH = path.join(__dirname, '..', 'js', 'database', 'database.sqlite');
 
+// Função para log de queries SQL
+function logQuery(query, params = []) {
+    console.log('\n📝 [SQL] Executando query:');
+    console.log('   Query:', query);
+    console.log('   Params:', params);
+}
+
+// Função para log de resultados
+function logQueryResult(operation, result) {
+    console.log('\n✅ [SQL] Resultado da operação:', operation);
+    console.log('   Dados:', result);
+    console.log('   Timestamp:', new Date().toISOString());
+}
+
+// Função para log de erros
+function logQueryError(operation, error) {
+    console.error('\n❌ [SQL] Erro na operação:', operation);
+    console.error('   Erro:', error);
+    console.error('   Timestamp:', new Date().toISOString());
+}
+
 // Função para inicializar banco de dados
 function initDatabase() {
     console.log('Inicializando banco de dados único...');
@@ -31,12 +52,13 @@ function initDatabase() {
             id TEXT PRIMARY KEY,
             user_id TEXT NOT NULL,
             name TEXT NOT NULL,
-            main_color TEXT NOT NULL DEFAULT '#FF0000',
-            skin_color TEXT NOT NULL DEFAULT '#FFA07A',
-            accent_color TEXT NOT NULL DEFAULT '#0000FF',
-            top_radius REAL NOT NULL DEFAULT 0.75,
-            bottom_radius REAL NOT NULL DEFAULT 0.75,
-            equipment_data TEXT DEFAULT '{}',
+            main_color TEXT NOT NULL,
+            skin_color TEXT NOT NULL,
+            accent_color TEXT NOT NULL,
+            top_radius REAL NOT NULL,
+            bottom_radius REAL NOT NULL,
+            face_expression TEXT NOT NULL,
+            equipment_data TEXT NOT NULL,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
         )`);
@@ -90,8 +112,8 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, '..')));
 
 // Middleware melhorado para tratamento de erros SQL
-const handleSqlError = (res, err) => {
-    console.error('Erro SQL:', err);
+const handleSqlError = (res, err, operation = 'unknown') => {
+    logQueryError(operation, err);
     if (err.code === 'SQLITE_CORRUPT') {
         res.status(500).json({
             success: false,
@@ -198,13 +220,17 @@ app.get('/api/character-exists/:id', (req, res) => {
 // Rota de verificação (DEVE VIR ANTES das rotas de personagens)
 app.get('/api/verify-character/:id', (req, res) => {
     const characterId = req.params.id;
-    console.log('🔍 Verificando existência do personagem:', characterId);
+    console.log('🔍 [CONSULTA] Verificando existência do personagem:', characterId);
 
     db.serialize(() => {
         const result = { exists: { character: false, reference: false } };
         
         // Verificar em characters
         db.get('SELECT COUNT(*) as count FROM characters WHERE id = ?', [characterId], (err, row) => {
+            console.log('📊 [CONSULTA] Resultado da verificação:', {
+                exists: row ? row.count > 0 : false,
+                count: row ? row.count : 0
+            });
             if (err) {
                 console.error('❌ Erro ao verificar characters:', err);
                 return handleSqlError(res, err);
@@ -287,77 +313,49 @@ app.post('/api/users/register', (req, res) => {
     });
 });
 
-// Rotas da API
-app.post('/api/users/register', (req, res) => {
-    const { username, password } = req.body;
-    const id = crypto.randomUUID();
-
-    db.run('INSERT INTO users (id, username, password) VALUES (?, ?, ?)', 
-        [id, username, password], 
-        function(err) {
-            if (err) {
-                if (err.message.includes('UNIQUE')) {
-                    res.status(400).json({ success: false, message: 'Usuário já existe' });
-                } else {
-                    res.status(500).json({ success: false, message: 'Erro no servidor' });
-                }
-                return;
-            }
-            res.json({ success: true, user: { id, username } });
-        }
-    );
-});
-
+// Rota de login
 app.post('/api/users/login', (req, res) => {
     const { username, password } = req.body;
+    const query = 'SELECT * FROM users WHERE username = ? AND password = ?';
     
-    // Validar dados
-    if (!username || !password) {
-        return res.status(400).json({ 
-            success: false, 
-            message: 'Username e password são obrigatórios' 
+    logQuery(query, [username, '****']);
+    
+    db.get(query, [username, password], (err, user) => {
+        if (err) {
+            return handleSqlError(res, err, 'user_login');
+        }
+        logQueryResult('user_login', {
+            success: !!user,
+            username: username
         });
-    }
-
-    // Query com tratamento de erro
-    db.get(
-        'SELECT id, username FROM users WHERE username = ? AND password = ?', 
-        [username, password], 
-        (err, user) => {
-            if (err) {
-                return handleSqlError(res, err);
-            }
-
-            if (user) {
-                return res.json({ 
-                    success: true, 
-                    user: {
-                        id: user.id,
-                        username: user.username,
-                        token: `temp_token_${user.id}`
-                    }
-                });
-            }
-
-            return res.status(401).json({ 
-                success: false, 
-                message: 'Credenciais inválidas' 
+        console.log('📊 [CONSULTA] Dados encontrados:', user ? { 
+            id: user.id, 
+            username: user.username,
+            created_at: user.created_at 
+        } : 'Nenhum usuário encontrado');
+        if (!user) {
+            return res.status(401).json({
+                success: false,
+                message: 'Credenciais inválidas'
             });
         }
-    );
+
+        res.json({
+            success: true,
+            user: {
+                id: user.id,
+                username: user.username,
+                token: `temp_token_${user.id}`
+            }
+        });
+    });
 });
 
 // Atualizar rota de personagens
 app.get('/api/characters', (req, res) => {
     const userId = req.query.userId;
+    console.log('🔍 [CONSULTA] Buscando personagens para usuário:', userId);
     
-    if (!userId) {
-        return res.status(400).json({ 
-            success: false, 
-            message: 'ID do usuário não fornecido' 
-        });
-    }
-
     db.all(`
         SELECT 
             id,
@@ -375,10 +373,14 @@ app.get('/api/characters', (req, res) => {
         ORDER BY created_at DESC
     `, [userId], (err, characters) => {
         if (err) {
-            console.error('Erro ao buscar personagens:', err);
+            console.error('❌ [CONSULTA] Erro ao buscar personagens:', err);
             return handleSqlError(res, err);
         }
-
+        console.log('📊 [CONSULTA] Personagens encontrados:', characters.map(char => ({
+            id: char.id,
+            name: char.name,
+            created_at: char.createdAt
+        })));
         // Processar os personagens para garantir o formato correto
         const processedCharacters = characters.map(char => ({
             ...char,
@@ -387,7 +389,9 @@ app.get('/api/characters', (req, res) => {
             skinColor: char.skinColor || '#FFA07A',
             accentColor: char.accentColor || '#0000FF',
             topRadius: char.topRadius || 0.75,
-            bottomRadius: char.bottomRadius || 0.75
+            bottomRadius: char.bottomRadius || 0.75,
+            faceExpression: char.faceExpression || "'-'"
+
         }));
 
         console.log(`✅ ${processedCharacters.length} personagens encontrados`);
@@ -406,26 +410,25 @@ app.get('/api/characters', (req, res) => {
 
 // Corrigir rota de listagem de personagens
 app.get('/api/characters/:userId', (req, res) => {
-    console.log('📝 Requisição para buscar personagens do usuário:', req.params.userId);
+    const userId = req.params.userId;
+    const query = 'SELECT * FROM character_refs WHERE user_id = ?';
     
-    db.all('SELECT * FROM character_refs WHERE user_id = ?', 
-        [req.params.userId], 
-        (err, characters) => {
-            if (err) {
-                console.error('❌ Erro SQL:', err);
-                return res.status(500).json({ 
-                    success: false, 
-                    message: 'Erro ao buscar personagens'
-                });
-            }
-
-            console.log('✅ Personagens encontrados:', characters?.length || 0);
-            res.json({ 
-                success: true, 
-                characters: characters || [] 
-            });
+    logQuery(query, [userId]);
+    
+    db.all(query, [userId], (err, characters) => {
+        if (err) {
+            return handleSqlError(res, err, 'get_characters');
         }
-    );
+        logQueryResult('get_characters', {
+            count: characters?.length || 0,
+            characters: characters
+        });
+        console.log('✅ Personagens encontrados:', characters?.length || 0);
+        res.json({ 
+            success: true, 
+            characters: characters || [] 
+        });
+    });
 });
 
 // Modificar rota de criação de personagem
@@ -438,17 +441,20 @@ app.post('/api/characters', (req, res) => {
         accentColor,
         topRadius,
         bottomRadius,
+        faceExpression,
         equipment
     } = req.body;
 
-    console.log('📝 Dados recebidos:', req.body);
-    
-    if (!userId || !name) {
-        return res.status(400).json({
-            success: false,
-            message: 'ID do usuário e nome são obrigatórios'
-        });
-    }
+    logQuery('INSERT INTO characters', {
+        userId,
+        name,
+        mainColor,
+        skinColor,
+        accentColor,
+        topRadius,
+        bottomRadius,
+        faceExpression
+    });
 
     const characterId = crypto.randomUUID();
     
@@ -463,17 +469,19 @@ app.post('/api/characters', (req, res) => {
                 accent_color,
                 top_radius,
                 bottom_radius,
+                face_expression,
                 equipment_data
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `, [
             characterId,
             userId,
             name,
-            mainColor || '#FF0000',
-            skinColor || '#FFA07A',
-            accentColor || '#0000FF',
-            topRadius || 0.75,
-            bottomRadius || 0.75,
+            mainColor,
+            skinColor,
+            accentColor,
+            topRadius,
+            bottomRadius,
+            faceExpression,
             JSON.stringify(equipment || {})
         ], function(err) {
             if (err) {
@@ -484,7 +492,14 @@ app.post('/api/characters', (req, res) => {
             console.log('✅ Personagem criado:', {
                 id: characterId,
                 userId,
-                name
+                name,
+                mainColor,
+                skinColor,
+                accentColor,
+                topRadius,
+                bottomRadius,
+                faceExpression,
+                equipment
             });
 
             res.json({
@@ -493,11 +508,12 @@ app.post('/api/characters', (req, res) => {
                     id: characterId,
                     userId,
                     name,
-                    mainColor: mainColor || '#FF0000',
-                    skinColor: skinColor || '#FFA07A',
-                    accentColor: accentColor || '#0000FF',
-                    topRadius: topRadius || 0.75,
-                    bottomRadius: bottomRadius || 0.75,
+                    mainColor: mainColor,
+                    skinColor: skinColor,
+                    accentColor: accentColor,
+                    topRadius: topRadius,
+                    bottomRadius: bottomRadius,
+                    faceExpression: faceExpression,
                     equipment: equipment || {
                         head: null,
                         leftHand: null,
@@ -511,25 +527,6 @@ app.post('/api/characters', (req, res) => {
 });
 
 // Rota para deletar referência de personagem
-app.delete('/api/character-refs/:id', (req, res) => {
-    const refId = req.params.id;
-    console.log('🗑️ Deletando referência de personagem:', refId);
-
-    db.run('DELETE FROM character_refs WHERE id = ?', [refId], function(err) {
-        if (err) {
-            console.error('❌ Erro ao deletar referência:', err);
-            return handleSqlError(res, err);
-        }
-
-        console.log('✅ Referência deletada:', this.changes);
-        res.json({
-            success: true,
-            debug: { refId, deleted: this.changes > 0 }
-        });
-    });
-});
-
-// Adicionar antes das outras rotas de characters
 app.delete('/api/character-refs/:refId', (req, res) => {
     const refId = parseInt(req.params.refId, 10); // Converter para número pois é INTEGER na tabela
     console.log('🗑️ Deletando referência ID:', refId);
@@ -574,13 +571,18 @@ app.delete('/api/character-refs/:refId', (req, res) => {
 // Rota de deleção simplificada
 app.delete('/api/characters/:id', (req, res) => {
     const characterId = req.params.id;
+    const query = 'DELETE FROM characters WHERE id = ?';
     
-    db.run('DELETE FROM characters WHERE id = ?', [characterId], function(err) {
+    logQuery(query, [characterId]);
+    
+    db.run(query, [characterId], function(err) {
         if (err) {
-            console.error('Erro ao deletar:', err);
-            return handleSqlError(res, err);
+            return handleSqlError(res, err, 'delete_character');
         }
-
+        logQueryResult('delete_character', {
+            id: characterId,
+            rowsAffected: this.changes
+        });
         res.json({
             success: true,
             debug: {
@@ -592,15 +594,11 @@ app.delete('/api/characters/:id', (req, res) => {
     });
 });
 
-// Adicionar rota de teste/health check
-app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', timestamp: new Date().toISOString() });
-});
-
 // Adicionar antes das outras rotas de usuário
 app.post('/api/users/exists', (req, res) => {
     const { username } = req.body;
-    
+    console.log('🔍 [CONSULTA] Verificando existência do usuário:', username);
+
     if (!username) {
         return res.status(400).json({
             success: false,
@@ -611,6 +609,10 @@ app.post('/api/users/exists', (req, res) => {
     console.log('🔍 Verificando existência do usuário:', username);
 
     db.get('SELECT id FROM users WHERE username = ?', [username], (err, user) => {
+        console.log('📊 [CONSULTA] Resultado da verificação:', {
+            exists: !!user,
+            timestamp: new Date().toISOString()
+        });
         if (err) {
             console.error('❌ Erro ao verificar usuário:', err);
             return handleSqlError(res, err);
@@ -667,66 +669,6 @@ app.post('/api/users', async (req, res) => {
                     });
                 }
             );
-        });
-    });
-});
-
-// Atualizar rota de login para usar a nova estrutura
-app.post('/api/users/login', (req, res) => {
-    const { username, password } = req.body;
-    
-    if (!username || !password) {
-        return res.status(400).json({ 
-            success: false, 
-            message: 'Username e password são obrigatórios' 
-        });
-    }
-
-    db.get('SELECT * FROM users WHERE username = ? AND password = ?', 
-        [username, password], 
-        (err, user) => {
-            if (err) {
-                return handleSqlError(res, err);
-            }
-
-            if (!user) {
-                return res.status(401).json({
-                    success: false,
-                    message: 'Credenciais inválidas'
-                });
-            }
-
-            res.json({
-                success: true,
-                user: {
-                    id: user.id,
-                    username: user.username,
-                    token: `temp_token_${user.id}`
-                }
-            });
-        }
-    );
-});
-
-// Adicionar rota para verificar existência de usuário
-app.post('/api/users/exists', (req, res) => {
-    const { username } = req.body;
-    
-    if (!username) {
-        return res.status(400).json({
-            success: false,
-            message: 'Nome de usuário não fornecido'
-        });
-    }
-
-    db.get('SELECT id FROM users WHERE username = ?', [username], (err, user) => {
-        if (err) {
-            return handleSqlError(res, err);
-        }
-
-        res.json({
-            success: true,
-            exists: !!user
         });
     });
 });
