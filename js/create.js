@@ -1,5 +1,5 @@
 import { THREE } from './core/three.js';
-import { Character, DEFAULT_CHARACTER } from './character/character.js';
+import { Character, CHARACTER_CONFIG } from './character/character.js';
 import { authGuard } from './auth/authGuard.js';
 import { Database } from './database/database.js';
 import { SpaceScene } from './map/spaceScene.js';
@@ -10,25 +10,18 @@ class CharacterCreator {
     constructor() {
         this.db = new Database();
         this.character3D = null;
-        this.currentCharacter = new Character({
-            main_color: DEFAULT_CHARACTER.mainColor,
-            skin_color: DEFAULT_CHARACTER.skinColor,
-            accent_color: DEFAULT_CHARACTER.accentColor,
-            top_radius: DEFAULT_CHARACTER.topRadius,
-            bottom_radius: DEFAULT_CHARACTER.bottomRadius,
-            face_expression: DEFAULT_CHARACTER.faceExpression,
-            equipment_data: DEFAULT_CHARACTER.equipment
-        });
+        // Criar personagem em modo de criação (usando valores padrão)
+        this.currentCharacter = new Character({}, true);
         this.renderSystem = RenderSystem.getInstance();
         this.isDragging = false;
         
-        // Usar valores do DEFAULT_CHARACTER
-        this.mainColor = DEFAULT_CHARACTER.mainColor;
-        this.skinColor = DEFAULT_CHARACTER.skinColor;
-        this.accentColor = DEFAULT_CHARACTER.accentColor;
-        this.topRadius = DEFAULT_CHARACTER.topRadius;
-        this.bottomRadius = DEFAULT_CHARACTER.bottomRadius;
-        this.faceExpression = DEFAULT_CHARACTER.faceExpression;
+        // Usar valores do CHARACTER_CONFIG.defaults
+        this.mainColor = CHARACTER_CONFIG.defaults.mainColor;
+        this.skinColor = CHARACTER_CONFIG.defaults.skinColor;
+        this.accentColor = CHARACTER_CONFIG.defaults.accentColor;
+        this.topRadius = CHARACTER_CONFIG.defaults.topRadius;
+        this.bottomRadius = CHARACTER_CONFIG.defaults.bottomRadius;
+        this.faceExpression = CHARACTER_CONFIG.defaults.faceExpression;
 
         this.resetCharacterForm();
     }
@@ -183,6 +176,50 @@ class CharacterCreator {
     }
 
     setupEventListeners() {
+        // Menu mobile toggle
+        const menuToggle = document.getElementById('menuToggle');
+        const controlsSection = document.querySelector('.controls-section');
+        
+        if (menuToggle && controlsSection) {
+            menuToggle.addEventListener('click', () => {
+                controlsSection.classList.toggle('active');
+                menuToggle.classList.toggle('active');
+            });
+
+            // Fechar menu ao clicar fora
+            document.addEventListener('click', (e) => {
+                if (!controlsSection.contains(e.target) && 
+                    !menuToggle.contains(e.target) && 
+                    controlsSection.classList.contains('active')) {
+                    controlsSection.classList.remove('active');
+                    menuToggle.classList.remove('active');
+                }
+            });
+        }
+
+        // Adicionar suporte para touch no controle de raio
+        const slider = document.getElementById('radiusSlider2D');
+        if (slider) {
+            slider.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                this.isDragging = true;
+                const touch = e.touches[0];
+                this.updateRadiusFromPosition(touch.clientX, touch.clientY);
+            }, { passive: false });
+
+            document.addEventListener('touchmove', (e) => {
+                if (this.isDragging) {
+                    e.preventDefault();
+                    const touch = e.touches[0];
+                    this.updateRadiusFromPosition(touch.clientX, touch.clientY);
+                }
+            }, { passive: false });
+
+            document.addEventListener('touchend', () => {
+                this.isDragging = false;
+            });
+        }
+
         // Botão Salvar
         document.getElementById('saveCharacter').addEventListener('click', async () => {
             if (!this.validateForm()) return;
@@ -235,54 +272,6 @@ class CharacterCreator {
             });
         }
 
-        // Adicionar handlers para botões de olhos
-        const eyeButtons = document.querySelectorAll('.eye-option');
-        eyeButtons.forEach(button => {
-            button.addEventListener('click', (e) => {
-                // Remover classe active de todos os botões
-                eyeButtons.forEach(btn => btn.classList.remove('active'));
-                // Adicionar classe active ao botão clicado
-                button.classList.add('active');
-                
-                // Atualizar olhos do personagem
-                const eyeType = button.dataset.eyeType;
-                this.currentCharacter.updateEyes(eyeType);
-            });
-        });
-
-        // Adicionar handler para expressão facial
-        document.getElementById('faceExpression').addEventListener('input', (e) => {
-            const expression = e.target.value;
-            if (this.currentCharacter) {
-                this.currentCharacter.updateFaceExpression(expression);
-            }
-        });
-
-        // Adicionar handlers para presets de expressões
-        document.querySelectorAll('.face-preset').forEach(button => {
-            button.addEventListener('click', () => {
-                const expression = button.dataset.face;
-                document.getElementById('faceExpression').value = expression;
-                if (this.currentCharacter) {
-                    this.currentCharacter.updateFaceExpression(expression);
-                }
-            });
-        });
-
-        // Simplificar handler da expressão facial
-        const faceInput = document.getElementById('faceExpression');
-        faceInput.addEventListener('input', (e) => {
-            if (this.currentCharacter) {
-                this.currentCharacter.faceExpression = e.target.value;
-                this.currentCharacter.update3DModel(this.character3D);
-            }
-        });
-
-        // Remover eventos duplicados de faceExpression
-        // Remover referências a updateFaceExpression
-        // Manter apenas o código acima para expressão facial
-
-        // Remover handlers antigos e substituir por uma versão simplificada
         // Handler unificado para expressão facial
         document.getElementById('faceExpression').addEventListener('input', (e) => {
             if (this.currentCharacter) {
@@ -291,29 +280,38 @@ class CharacterCreator {
             }
         });
 
-        // Handlers para presets de expressões
-        document.querySelectorAll('.face-preset').forEach(button => {
-            button.addEventListener('click', () => {
-                const expression = button.dataset.face;
-                const faceInput = document.getElementById('faceExpression');
-                faceInput.value = expression;
-                if (this.currentCharacter) {
-                    this.currentCharacter.faceExpression = expression;
-                    this.currentCharacter.update3DModel(this.character3D);
-                }
-            });
-        });
-
-        // Remover outros handlers duplicados de faceExpression
-
         // Adicionar setup do controle de raio
         this.setupRadiusControl();
     }
 
     validateForm() {
         const name = document.getElementById('charName').value.trim();
+        const face = document.getElementById('faceExpression').value.trim();
+        const mainColor = document.getElementById('mainColor').value;
+        const skinColor = document.getElementById('skinColor').value;
+        const accentColor = document.getElementById('accentColor').value;
+
         if (!name) {
             alert('Por favor, digite um nome para o personagem');
+            return false;
+        }
+
+        if (!face) {
+            alert('Por favor, defina os caracteres do rosto');
+            return false;
+        }
+
+        // Validar formato das cores
+        const colorRegex = /^#[0-9A-F]{6}$/i;
+        if (!colorRegex.test(mainColor) || !colorRegex.test(skinColor) || !colorRegex.test(accentColor)) {
+            alert('Por favor, selecione cores válidas para o personagem');
+            return false;
+        }
+
+        // Validar raios
+        if (this.topRadius < 0.5 || this.topRadius > 1.0 || 
+            this.bottomRadius < 0.5 || this.bottomRadius > 1.0) {
+            alert('Os valores dos raios devem estar entre 0.5 e 1.0');
             return false;
         }
 
@@ -330,42 +328,42 @@ class CharacterCreator {
     async saveCharacter() {
         try {
             const userId = authGuard.getActiveUserId();
-            if (!userId) {
-                throw new Error('ID do usuário não encontrado');
-            }
+            if (!userId) throw new Error('ID do usuário não encontrado');
 
-            // Atualizar nome do personagem atual
-            const name = document.getElementById('charName').value.trim();
-            this.currentCharacter.name = name;
-            this.currentCharacter.userId = userId;
-
-            // Enviar dados atuais do personagem
+            // Preparar dados no formato snake_case para banco
             const characterData = {
-                userId: userId,
-                name: this.currentCharacter.name,
-                mainColor: this.currentCharacter.mainColor,
-                skinColor: this.currentCharacter.skinColor,
-                accentColor: this.currentCharacter.accentColor,
-                topRadius: this.currentCharacter.topRadius,
-                bottomRadius: this.currentCharacter.bottomRadius,
-                equipment: this.currentCharacter.equipment,
-                faceExpression: this.currentCharacter.faceExpression
+                user_id: userId,
+                name: document.getElementById('charName').value.trim(),
+                face_expression: document.getElementById('faceExpression').value.trim() || CHARACTER_CONFIG.defaults.faceExpression,
+                main_color: document.getElementById('mainColor').value || CHARACTER_CONFIG.defaults.mainColor,
+                skin_color: document.getElementById('skinColor').value || CHARACTER_CONFIG.defaults.skinColor,
+                accent_color: document.getElementById('accentColor').value || CHARACTER_CONFIG.defaults.accentColor,
+                top_radius: this.topRadius || CHARACTER_CONFIG.defaults.topRadius,
+                bottom_radius: this.bottomRadius || CHARACTER_CONFIG.defaults.bottomRadius,
+                equipment_data: JSON.stringify(CHARACTER_CONFIG.defaults.equipment || {})
             };
 
-            console.log('Salvando personagem com dados atualizados:', characterData);
+            // Validar dados antes de enviar
+            Object.entries(characterData).forEach(([key, value]) => {
+                if (value === undefined || value === null || value === '') {
+                    throw new Error(`Campo ${key} não pode ser vazio`);
+                }
+            });
+
+            console.log('📤 Dados validados para envio:', characterData);
+            
             const result = await this.db.saveCharacter(characterData);
 
-            if (!result.success) {
-                throw new Error(result.error || 'Falha ao salvar personagem');
+            if (result.success) {
+                alert('Personagem salvo com sucesso!');
+                window.location.href = 'select.html';
+            } else {
+                throw new Error(result.message || 'Erro ao salvar personagem');
             }
 
-            console.log('Personagem salvo com sucesso:', result.character);
-            alert('Personagem salvo com sucesso!');
-            window.location.href = 'select.html';
-
         } catch (error) {
-            console.error('Erro ao salvar:', error);
-            alert(`Erro ao salvar o personagem: ${error.message}`);
+            console.error('❌ Erro ao salvar:', error);
+            alert(`Erro ao salvar: ${error.message}`);
         }
     }
 
@@ -463,21 +461,30 @@ class CharacterCreator {
     }
 
     resetCharacterForm() {
-        // Usar valores do DEFAULT_CHARACTER para reset
-        this.mainColor = DEFAULT_CHARACTER.mainColor;
-        this.skinColor = DEFAULT_CHARACTER.skinColor;
-        this.accentColor = DEFAULT_CHARACTER.accentColor;
-        this.topRadius = DEFAULT_CHARACTER.topRadius;
-        this.bottomRadius = DEFAULT_CHARACTER.bottomRadius;
+        // Usar valores do CHARACTER_CONFIG.defaults para reset
+        this.mainColor = CHARACTER_CONFIG.defaults.mainColor;
+        this.skinColor = CHARACTER_CONFIG.defaults.skinColor;
+        this.accentColor = CHARACTER_CONFIG.defaults.accentColor;
+        this.topRadius = CHARACTER_CONFIG.defaults.topRadius;
+        this.bottomRadius = CHARACTER_CONFIG.defaults.bottomRadius;
 
         // Atualizar posição do handle para o centro
         const handle = document.getElementById('radiusHandle');
-        handle.style.left = '50%';
-        handle.style.top = '50%';
+        if (handle) {
+            handle.style.left = '50%';
+            handle.style.top = '50%';
+        }
 
-        // Atualizar valores exibidos
-        document.getElementById('topRadiusValue').textContent = this.topRadius.toFixed(2);
-        document.getElementById('bottomRadiusValue').textContent = this.bottomRadius.toFixed(2);
+        // Atualizar valores exibidos com verificação de null
+        const topRadiusValue = document.getElementById('topRadiusValue');
+        const bottomRadiusValue = document.getElementById('bottomRadiusValue');
+        
+        if (topRadiusValue) {
+            topRadiusValue.textContent = this.topRadius.toFixed(2);
+        }
+        if (bottomRadiusValue) {
+            bottomRadiusValue.textContent = this.bottomRadius.toFixed(2);
+        }
 
         // Atualizar geometria do personagem
         this.updateCharacterShape();
@@ -498,6 +505,29 @@ class CharacterCreator {
             headMaterial.envMapIntensity = 1;
         }
     }
+
+    resetCharacterCreation() {
+        // Atualizar método para usar this.currentCharacter
+        document.getElementById('mainColor').value = this.currentCharacter.mainColor;
+        document.getElementById('skinColor').value = this.currentCharacter.skinColor;
+        document.getElementById('accentColor').value = this.currentCharacter.accentColor;
+        document.getElementById('charName').value = '';
+        
+        this.currentCharacter.topRadius = CHARACTER_CONFIG.topRadius;
+        this.currentCharacter.bottomRadius = CHARACTER_CONFIG.bottomRadius;
+        
+        const handle = document.getElementById('radiusHandle');
+        const normalizedPosition = ((0.75 - 0.5) / (1.0 - 0.5)) * 100;
+        handle.style.left = `${normalizedPosition}%`;
+        handle.style.top = `${normalizedPosition}%`;
+        
+        document.getElementById('topRadiusValue').textContent = this.currentCharacter.topRadius.toFixed(2);
+        document.getElementById('bottomRadiusValue').textContent = this.currentCharacter.bottomRadius.toFixed(2);
+        
+        if (this.character3D) {
+            this.currentCharacter.update3DModel(this.character3D);
+        }
+    }
 }
 
 // Inicialização
@@ -510,225 +540,3 @@ document.addEventListener('DOMContentLoaded', () => {
         window.location.replace('/pages/select.html');
     });
 });
-
-function createCharacter3D(options = {}) {
-    const group = new THREE.Group();
-    
-    // Corpo com material melhorado
-    const bodyGeometry = new THREE.CylinderGeometry(
-        options.topRadius || 0.75,
-        options.bottomRadius || 0.75,
-        2,
-        32
-    );
-    const bodyMaterial = new THREE.MeshStandardMaterial({
-        color: options.mainColor || '#FF0000',
-        roughness: 0.3,          // Menor rugosidade para mais brilho
-        metalness: 0.4,          // Aumentar metalicidade
-        envMapIntensity: 1.2,    // Aumentar intensidade de reflexão
-        flatShading: false       // Suavizar superfície
-    });
-    const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
-    body.position.y = -0.5;
-    body.castShadow = true;
-    body.receiveShadow = true;
-    group.add(body);
-    
-    // Cabeça com material melhorado
-    const headGeometry = new THREE.SphereGeometry(0.5, 32, 32);
-    const headMaterial = new THREE.MeshStandardMaterial({
-        color: options.skinColor || '#FFA07A',
-        roughness: 0.2,          // Menor rugosidade para mais brilho
-        metalness: 0.3,          // Metalicidade moderada
-        envMapIntensity: 1.2,    // Aumentar intensidade de reflexão
-        flatShading: false,      // Suavizar superfície
-        transparent: true,      // Adicionar suporte à transparência
-        alphaTest: 0.5,        // Ajustar teste alpha para melhor renderização
-        combine: THREE.MultiplyOperation  // Garantir que a cor base seja multiplicada com a textura
-    });
-    const head = new THREE.Mesh(headGeometry, headMaterial);
-    head.position.y = 1;
-    head.castShadow = true;
-    head.receiveShadow = true;
-    group.add(head);
-    
-    // Definir posição Y inicial correta
-    group.position.set(0, -9.6, 0);
-    
-    return group;
-}
-
-function resetCharacterCreation() {
-    // Reset das cores
-    document.getElementById('mainColor').value = mainColor;
-    document.getElementById('skinColor').value = skinColor;
-    document.getElementById('accentColor').value = accentColor;
-    document.getElementById('charName').value = '';
-    
-    // Reset dos raios para o valor padrão (0.75)
-    topRadius = 0.75;
-    bottomRadius = 0.75;
-    
-    // Posicionar handle na posição inicial
-    const handle = document.getElementById('radiusHandle');
-    const normalizedPosition = ((0.75 - 0.5) / (1.0 - 0.5)) * 100;
-    handle.style.left = `${normalizedPosition}%`;
-    handle.style.top = `${normalizedPosition}%`;
-    
-    // Atualizar valores exibidos
-    document.getElementById('topRadiusValue').textContent = topRadius.toFixed(2);
-    document.getElementById('bottomRadiusValue').textContent = bottomRadius.toFixed(2);
-    
-    // Atualizar preview 3D
-    if (character3D) {
-        const body = character3D.children.find(child => !child.name); // corpo é o que não tem nome
-        const head = character3D.children.find(child => child.name === 'head');
-        
-        if (body && head) {
-            body.material.color.setStyle(mainColor);
-            head.material.color.setStyle(skinColor);
-            
-            const newBodyGeometry = new THREE.CylinderGeometry(
-                Math.max(0.1, topRadius), // Evita valores zero ou negativos
-                Math.max(0.1, bottomRadius),
-                2,
-                32
-            );
-            body.geometry.dispose();
-            body.geometry = newBodyGeometry;
-        }
-    }
-}
-
-function initCharacterPreview() {
-    const canvas = document.getElementById('characterPreview');
-    const previewSection = document.querySelector('.preview-section');
-    
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x000000);
-
-    const camera = new THREE.PerspectiveCamera(75, previewSection.offsetWidth / previewSection.offsetHeight, 0.1, 5000);
-    const renderer = new THREE.WebGLRenderer({ 
-        canvas,
-        antialias: true,
-        logarithmicDepthBuffer: true
-    });
-
-    // Criar cena espacial
-    const spaceScene = new SpaceScene(scene, camera);
-
-    // Usar CameraController - removida a declaração duplicada
-    const cameraController = new CameraController(camera, renderer, scene);
-
-    function resizeRenderer() {
-        const width = previewSection.offsetWidth;
-        const height = previewSection.offsetHeight;
-        camera.aspect = width / height;
-        camera.updateProjectionMatrix();
-        renderer.setSize(width, height, false);
-    }
-    
-    window.addEventListener('resize', resizeRenderer);
-    resizeRenderer();
-    
-    // Criar modelo 3D inicial
-    try {
-        currentCharacter = new Character("", mainColor, skinColor, accentColor);
-        character3D = currentCharacter.create3DModel();
-        scene.add(character3D);
-    } catch (error) {
-        console.error('Erro ao criar personagem:', error);
-    }
-    
-    // Animation loop simplificado
-    function animate() {
-        requestAnimationFrame(animate);
-        cameraController.update();
-        spaceScene.update();
-        renderer.render(scene, camera);
-    }
-    animate();
-    
-    // Configurar inputs de cor
-    ['mainColor', 'skinColor', 'accentColor'].forEach(id => {
-        document.getElementById(id).addEventListener('input', (e) => {
-            if (id === 'mainColor') {
-                mainColor = e.target.value;
-                character3D.children[0].material.color.setStyle(mainColor);
-            } else if (id === 'skinColor') {
-                skinColor = e.target.value;
-                character3D.children[1].material.color.setStyle(skinColor);
-            }
-        });
-    });
-
-    // Configurar controle 2D de raios
-    setupRadiusControl();
-}
-
-function setupRadiusControl() {
-    const slider2D = document.getElementById('radiusSlider2D');
-    const handle = document.getElementById('radiusHandle');
-    let isDragging = false;
-
-    // Definir constantes para os limites
-    const MIN_RADIUS = 0.5;
-    const MAX_RADIUS = 1.0;
-    const DEFAULT_RADIUS = 0.75;
-
-    // Função para converter posição do mouse para valor do raio
-    function updateRadiusFromPosition(x, y) {
-        const rect = slider2D.getBoundingClientRect();
-        const normalizedX = Math.max(0, Math.min(1, (x - rect.left) / rect.width));
-        const normalizedY = Math.max(0, Math.min(1, (y - rect.top) / rect.height));
-
-        // Mapear valores normalizados para o intervalo desejado
-        topRadius = MIN_RADIUS + (normalizedX * (MAX_RADIUS - MIN_RADIUS));
-        bottomRadius = MIN_RADIUS + (normalizedY * (MAX_RADIUS - MIN_RADIUS));
-
-        // Atualizar posição visual do handle
-        handle.style.left = `${normalizedX * 100}%`;
-        handle.style.top = `${normalizedY * 100}%`;
-
-        // Atualizar valores exibidos
-        document.getElementById('topRadiusValue').textContent = topRadius.toFixed(2);
-        document.getElementById('bottomRadiusValue').textContent = bottomRadius.toFixed(2);
-
-        updateCharacterBody();
-    }
-
-    // Posicionar handle na posição inicial (0.75, 0.75)
-    const initialX = ((DEFAULT_RADIUS - MIN_RADIUS) / (MAX_RADIUS - MIN_RADIUS)) * 100;
-    const initialY = ((DEFAULT_RADIUS - MIN_RADIUS) / (MAX_RADIUS - MIN_RADIUS)) * 100;
-    handle.style.left = `${initialX}%`;
-    handle.style.top = `${initialY}%`;
-
-    function updateCharacterBody() {
-        if (character3D) {
-            const body = character3D.children[0];
-            const newGeometry = new THREE.CylinderGeometry(
-                topRadius,
-                bottomRadius,
-                2,
-                32
-            );
-            body.geometry.dispose();
-            body.geometry = newGeometry;
-        }
-    }
-
-    slider2D.addEventListener('mousedown', (e) => {
-        isDragging = true;
-        updateRadiusFromPosition(e.clientX, e.clientY);
-    });
-
-    document.addEventListener('mousemove', (e) => {
-        if (isDragging) {
-            updateRadiusFromPosition(e.clientX, e.clientY);
-        }
-    });
-
-    document.addEventListener('mouseup', () => {
-        isDragging = false;
-    });
-}
