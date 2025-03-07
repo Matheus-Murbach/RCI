@@ -36,31 +36,40 @@ function initDatabase() {
     console.log('Inicializando banco de dados único...');
     
     db.serialize(() => {
-        // Criar tabelas com foreign keys
         db.run(`PRAGMA foreign_keys = ON`);
 
-        // Tabela de usuários
+        // Tabela de usuários sem alteração
         db.run(`CREATE TABLE IF NOT EXISTS users (
             id TEXT PRIMARY KEY,
             username TEXT UNIQUE NOT NULL,
             password TEXT NOT NULL,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
         )`);
 
-        // Tabela de personagens com referência direta ao usuário
+        // Tabela de personagens atualizada para camelCase
         db.run(`CREATE TABLE IF NOT EXISTS characters (
             id TEXT PRIMARY KEY,
-            user_id TEXT NOT NULL,
+            userId TEXT NOT NULL,
             name TEXT NOT NULL,
-            main_color TEXT NOT NULL,
-            skin_color TEXT NOT NULL,
-            accent_color TEXT NOT NULL,
-            top_radius REAL NOT NULL,
-            bottom_radius REAL NOT NULL,
-            face_expression TEXT NOT NULL,
-            equipment_data TEXT NOT NULL,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+            mainColor TEXT NOT NULL,
+            skinColor TEXT NOT NULL,
+            accentColor TEXT NOT NULL,
+            topRadius REAL NOT NULL,
+            bottomRadius REAL NOT NULL,
+            faceExpression TEXT NOT NULL,
+            equipment TEXT NOT NULL,
+            createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(userId) REFERENCES users(id) ON DELETE CASCADE
+        )`);
+
+        // Criar nova tabela em camelCase
+        db.run(`CREATE TABLE IF NOT EXISTS characterRefs (
+            id TEXT PRIMARY KEY,
+            userId TEXT NOT NULL,
+            characterId TEXT NOT NULL,
+            createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(userId) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY(characterId) REFERENCES characters(id) ON DELETE CASCADE
         )`);
 
         // Verificar integridade
@@ -103,9 +112,13 @@ try {
 
 // Middleware
 app.use(cors({
-    origin: '*', // Em produção, especifique os domínios permitidos
-    methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    origin: '*',
+    methods: ['GET', 'POST', 'DELETE', 'OPTIONS', 'PUT'],
+    allowedHeaders: [
+        'Content-Type', 
+        'Authorization',
+        'ngrok-skip-browser-warning' // Adicionar o header do ngrok
+    ],
     credentials: true
 }));
 app.use(express.json());
@@ -135,7 +148,7 @@ async function startNgrok() {
         const ngrok = require('ngrok');
         const url = await ngrok.connect({
             addr: PORT,
-            authtoken: '2tdQ2asZorL71Db1AyFVTzBkY4N_7p5b3fVkj5vyUW4Qf5hDa'
+            authtoken: '2tyRAoYN5dkrmYaBvI5Zb1T2pad_4StAqt45P9nLZW83U164Z'
         });
         console.log('Túnel ngrok disponível em:', url);
         return url;
@@ -192,7 +205,7 @@ app.get('/api/character-exists/:id', (req, res) => {
                 );
             }),
             new Promise((resolve, reject) => {
-                db.get('SELECT COUNT(*) as count FROM character_refs WHERE character_id = ?', 
+                db.get('SELECT COUNT(*) as count FROM characterRefs WHERE characterId = ?', 
                     [characterId], 
                     (err, row) => err ? reject(err) : resolve(row.count > 0)
                 );
@@ -237,8 +250,8 @@ app.get('/api/verify-character/:id', (req, res) => {
             }
             result.exists.character = row.count > 0;
 
-            // Verificar em character_refs
-            db.get('SELECT COUNT(*) as count FROM character_refs WHERE character_id = ?', [characterId], (err, row) => {
+            // Atualizar: character_refs para characterRefs
+            db.get('SELECT COUNT(*) as count FROM characterRefs WHERE characterId = ?', [characterId], (err, row) => {
                 if (err) {
                     console.error('❌ Erro ao verificar character_refs:', err);
                     return handleSqlError(res, err);
@@ -359,38 +372,38 @@ app.get('/api/characters', (req, res) => {
     db.all(`
         SELECT 
             id,
-            user_id as userId,
+            userId,
             name,
-            main_color as mainColor,
-            skin_color as skinColor,
-            accent_color as accentColor,
-            top_radius as topRadius,
-            bottom_radius as bottomRadius,
-            equipment_data as equipment,
-            created_at as createdAt
+            mainColor,
+            skinColor,
+            accentColor,
+            topRadius,
+            bottomRadius,
+            faceExpression,
+            equipment,
+            createdAt
         FROM characters 
-        WHERE user_id = ?
-        ORDER BY created_at DESC
+        WHERE userId = ?
+        ORDER BY createdAt DESC
     `, [userId], (err, characters) => {
         if (err) {
             console.error('❌ [CONSULTA] Erro ao buscar personagens:', err);
             return handleSqlError(res, err);
         }
         console.log('📊 [CONSULTA] Personagens encontrados:', characters.map(char => ({
-            id: char.id,
-            name: char.name,
-            created_at: char.createdAt
+            char: char,
+            createdAt: char.createdAt
         })));
         // Processar os personagens para garantir o formato correto
         const processedCharacters = characters.map(char => ({
             ...char,
             equipment: JSON.parse(char.equipment || '{}'),
-            mainColor: char.mainColor || '#FF0000',
-            skinColor: char.skinColor || '#FFA07A',
-            accentColor: char.accentColor || '#0000FF',
-            topRadius: char.topRadius || 0.75,
-            bottomRadius: char.bottomRadius || 0.75,
-            faceExpression: char.faceExpression || "'-'"
+            mainColor: char.mainColor,
+            skinColor: char.skinColor,
+            accentColor: char.accentColor,
+            topRadius: char.topRadius ,
+            bottomRadius: char.bottomRadius,
+            faceExpression: char.faceExpression
 
         }));
 
@@ -411,7 +424,7 @@ app.get('/api/characters', (req, res) => {
 // Corrigir rota de listagem de personagens
 app.get('/api/characters/:userId', (req, res) => {
     const userId = req.params.userId;
-    const query = 'SELECT * FROM character_refs WHERE user_id = ?';
+    const query = 'SELECT * FROM characterRefs WHERE userId = ?';
     
     logQuery(query, [userId]);
     
@@ -433,95 +446,46 @@ app.get('/api/characters/:userId', (req, res) => {
 
 // Modificar rota de criação de personagem
 app.post('/api/characters', (req, res) => {
-    const {
-        userId,
-        name,
-        mainColor,
-        skinColor,
-        accentColor,
-        topRadius,
-        bottomRadius,
-        faceExpression,
-        equipment
-    } = req.body;
-
-    logQuery('INSERT INTO characters', {
-        userId,
-        name,
-        mainColor,
-        skinColor,
-        accentColor,
-        topRadius,
-        bottomRadius,
-        faceExpression
-    });
-
-    const characterId = crypto.randomUUID();
+    console.log('📝 Recebendo dados:', req.body);
     
-    db.serialize(() => {
-        db.run(`
-            INSERT INTO characters (
-                id,
-                user_id,
-                name,
-                main_color,
-                skin_color,
-                accent_color,
-                top_radius,
-                bottom_radius,
-                face_expression,
-                equipment_data
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `, [
-            characterId,
-            userId,
-            name,
-            mainColor,
-            skinColor,
-            accentColor,
-            topRadius,
-            bottomRadius,
-            faceExpression,
-            JSON.stringify(equipment || {})
-        ], function(err) {
-            if (err) {
-                console.error('❌ Erro ao criar personagem:', err);
-                return handleSqlError(res, err);
+    const characterData = {
+        id: crypto.randomUUID(),
+        ...req.body,
+        equipment: JSON.stringify(req.body.equipment || {})
+    };
+
+    console.log('🔄 Dados para inserção:', characterData);
+
+    db.run(`
+        INSERT INTO characters (
+            id, userId, name, mainColor, skinColor, 
+            accentColor, topRadius, bottomRadius, 
+            faceExpression, equipment
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [
+        characterData.id,
+        characterData.userId,
+        characterData.name,
+        characterData.mainColor,
+        characterData.skinColor,
+        characterData.accentColor,
+        characterData.topRadius,
+        characterData.bottomRadius,
+        characterData.faceExpression,
+        characterData.equipment
+    ], function(err) {
+        if (err) {
+            console.error('❌ Erro ao criar personagem:', err);
+            return handleSqlError(res, err);
+        }
+
+        console.log('✅ Personagem criado com sucesso:', characterData);
+        res.json({
+            success: true,
+            character: {
+                ...characterData,
+                equipment: JSON.parse(characterData.equipment)
             }
-
-            console.log('✅ Personagem criado:', {
-                id: characterId,
-                userId,
-                name,
-                mainColor,
-                skinColor,
-                accentColor,
-                topRadius,
-                bottomRadius,
-                faceExpression,
-                equipment
-            });
-
-            res.json({
-                success: true,
-                character: {
-                    id: characterId,
-                    userId,
-                    name,
-                    mainColor: mainColor,
-                    skinColor: skinColor,
-                    accentColor: accentColor,
-                    topRadius: topRadius,
-                    bottomRadius: bottomRadius,
-                    faceExpression: faceExpression,
-                    equipment: equipment || {
-                        head: null,
-                        leftHand: null,
-                        rightHand: null,
-                        back: null
-                    }
-                }
-            });
         });
     });
 });

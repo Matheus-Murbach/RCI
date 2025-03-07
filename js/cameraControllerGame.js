@@ -1,42 +1,18 @@
 import { THREE } from './core/three.js';
+import { BaseCameraController } from './core/baseCameraController.js';
 
-export class CameraControllerGame {
-    constructor(camera) {
-        // Referência da câmera
-        this.camera = camera;
-        this.target = new THREE.Vector3();
-
-        // Configurações de Distância
-        this.distance = 20;        // Distância inicial da câmera
-        this.minDistance = 10;     // Zoom máximo (mais próximo)
-        this.maxDistance = 30;     // Zoom máximo (mais distante)
-
-        // Configurações de Ângulos
-        this.angle = Math.PI / 5;  // Ângulo vertical inicial (45 graus)
-        this.rotationAngle = Math.PI / 4; // Rotação horizontal inicial (45 graus)
-        this.minAngle = Math.PI / 9;      // Ângulo vertical mínimo (30 graus)
-        this.maxAngle = Math.PI / 2;    // Ângulo vertical máximo (72 graus)
-
-        // Velocidades e Sensibilidade
-        this.panSpeed = 0.03;      // Velocidade do movimento lateral
-        this.rotateSpeed = 0.003;  // Velocidade da rotação
-        this.zoomSpeed = 1;        // Velocidade do zoom
-        this.smoothness = 2;     // Suavização do movimento (0-1)
-
-        // Estado do Mouse e Teclado
+export class CameraControllerGame extends BaseCameraController {
+    constructor(camera, scene) {
+        super(camera, scene);
+        
+        // Estado específico do jogo
         this.isLeftMouseDown = false;
         this.isRightMouseDown = false;
         this.isRotationMode = false;
         this.lastMouseX = 0;
         this.lastMouseY = 0;
-
-        this.setupCamera();
+        
         this.setupMouseControls();
-    }
-
-    setupCamera() {
-        this.updateCameraPosition();
-        this.camera.lookAt(this.target);
     }
 
     setupMouseControls() {
@@ -118,48 +94,12 @@ export class CameraControllerGame {
         this.updateCameraPosition();
     }
 
-    updateCameraPosition() {
-        const horizontalDistance = this.distance * Math.cos(this.angle);
-        
-        this.camera.position.x = this.target.x + horizontalDistance * Math.sin(this.rotationAngle);
-        this.camera.position.z = this.target.z + horizontalDistance * Math.cos(this.rotationAngle);
-        this.camera.position.y = this.target.y + this.distance * Math.sin(this.angle);
-        
-        this.camera.lookAt(this.target);
-    }
-
-    update(characterPosition) {
-        if (characterPosition) {
-            this.updateCameraPosition();
-        }
-    }
-
-    // Métodos de ajuste simplificados
-    adjustCameraSettings(settings) {
-        // Ajuste de distâncias
-        if (settings.distance) {
-            this.distance = settings.distance.current ?? this.distance;
-            this.minDistance = settings.distance.min ?? this.minDistance;
-            this.maxDistance = settings.distance.max ?? this.maxDistance;
-        }
-
-        // Ajuste de ângulos
-        if (settings.angles) {
-            this.angle = settings.angles.vertical ?? this.angle;
-            this.rotationAngle = settings.angles.rotation ?? this.rotationAngle;
-            this.minAngle = settings.angles.min ?? this.minAngle;
-            this.maxAngle = settings.angles.max ?? this.maxAngle;
-        }
-
-        // Ajuste de velocidades
-        if (settings.speeds) {
-            this.panSpeed = settings.speeds.pan ?? this.panSpeed;
-            this.rotateSpeed = settings.speeds.rotate ?? this.rotateSpeed;
-            this.zoomSpeed = settings.speeds.zoom ?? this.zoomSpeed;
-        }
-
-        if (settings.smoothness !== undefined) this.smoothness = settings.smoothness;
-
-        this.updateCameraPosition();
+    dispose() {
+        super.dispose();
+        document.removeEventListener('mousedown', this.onMouseDown);
+        document.removeEventListener('mouseup', this.onMouseUp);
+        document.removeEventListener('mousemove', this.onMouseMove);
+        document.removeEventListener('wheel', this.onMouseWheel);
+        document.removeEventListener('contextmenu', this.onContextMenu);
     }
 }

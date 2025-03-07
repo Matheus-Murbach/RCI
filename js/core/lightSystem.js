@@ -63,12 +63,9 @@ export class LightSystem {
         return lights;
     }
 
-    mergeConfigs(default_config, custom_config) {
-        return {
-            ambient: { ...default_config.ambient, ...custom_config.ambient },
-            directional: { ...default_config.directional, ...custom_config.directional },
-            hemisphere: { ...default_config.hemisphere, ...custom_config.hemisphere }
-        };
+    mergeConfigs(defaultConfig, customConfig) {
+        // Renomear parâmetros para camelCase
+        return { ...defaultConfig, ...customConfig };
     }
 
     clearLights(scene) {
@@ -87,7 +84,8 @@ export class LightSystem {
         const light = new THREE.DirectionalLight(config.color, config.intensity);
         light.position.copy(config.position);
 
-        if (config.shadowConfig.enabled) {
+        // Verificar se shadowConfig existe antes de acessar enabled
+        if (config.shadowConfig && config.shadowConfig.enabled) {
             light.castShadow = true;
             light.shadow.mapSize.width = config.shadowConfig.mapSize;
             light.shadow.mapSize.height = config.shadowConfig.mapSize;

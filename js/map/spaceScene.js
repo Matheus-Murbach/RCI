@@ -21,6 +21,9 @@ export class SpaceScene extends BaseScene {
         this.characterModel = null;
         this.cameraController = null; // Será definido depois
         this.init();
+
+        // Log para debug
+        console.log('🌌 SpaceScene inicializada');
     }
 
     setCameraController(controller) {
@@ -63,6 +66,9 @@ export class SpaceScene extends BaseScene {
         this.starsMovementSpeed = 0.5;
         this.starsDirection = new THREE.Vector3(0, 0, 1); // Movimento para frente
         this.stars = null; // Referência para o objeto de estrelas
+
+        // Log para debug
+        console.log('🌟 Elementos da SpaceScene criados');
     }
 
     // Novo método para calcular velocidade relativa

@@ -119,9 +119,9 @@ class LoginManager {
             if (result.success) {
                 this.showSuccess(result.message);
                 setTimeout(() => {
-                    const redirectUrl = localStorage.getItem('redirect_after_login') || '/pages/select.html';
-                    console.log('Redirecionando para:', redirectUrl);
-                    window.location.href = redirectUrl;
+                    const redirectUrl = localStorage.getItem('redirectAfterLogin') || '/pages/select.html';
+                    localStorage.removeItem('redirectAfterLogin');
+                    window.location.replace(redirectUrl);
                 }, 1000);
             } else {
                 this.showError(result.message);
@@ -354,11 +354,8 @@ class LoginManager {
 
     async handleLoginSuccess(result) {
         if (result.success) {
-            // Verificar se existe uma página para redirecionamento
-            const redirectUrl = localStorage.getItem('redirect_after_login');
-            localStorage.removeItem('redirect_after_login'); // Limpar após uso
-            
-            // Redirecionar para a página salva ou para select.html
+            const redirectUrl = localStorage.getItem('redirectAfterLogin');
+            localStorage.removeItem('redirectAfterLogin');
             window.location.href = redirectUrl || '/pages/select.html';
             return true;
         }

@@ -1,5 +1,3 @@
-import { CHARACTER_CONFIG } from '../character/character.js';
-
 export class Database {
     constructor() {
         this.apiUrl = null;
@@ -40,6 +38,8 @@ export class Database {
             for (const url of fallbackUrls) {
                 try {
                     console.log(`Testando conexão com: ${url}`);
+                    // ADICIONAR ESTE LOG
+                    console.log('🔍 Tentando conectar em:', url);
                     const response = await fetch(`${url}/api/health`, {
                         timeout: 5000,
                         headers: {
@@ -66,6 +66,10 @@ export class Database {
     async request(endpoint, options = {}) {
         await this.ensureApiUrl();
         
+        console.group('📡 Requisição ao Servidor');
+        console.log('🎯 Endpoint:', endpoint);
+        console.log('⚙️ Opções:', JSON.stringify(options, null, 2));
+        
         const defaultOptions = {
             headers: {
                 'Content-Type': 'application/json',
@@ -76,57 +80,101 @@ export class Database {
         const token = localStorage.getItem('userToken');
         if (token) {
             defaultOptions.headers['Authorization'] = `Bearer ${token}`;
+            console.log('🔑 Token incluído na requisição');
         }
 
         try {
+            console.log('📤 Enviando requisição para:', `${this.apiUrl}/api/${endpoint}`);
             const response = await fetch(
                 `${this.apiUrl}/api/${endpoint}`,
                 { ...defaultOptions, ...options }
             );
 
+            const responseData = await response.json();
+            console.log('📥 Resposta do servidor:', {
+                status: response.status,
+                headers: Object.fromEntries(response.headers.entries()),
+                data: responseData
+            });
+
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
 
-            return await response.json();
+            console.groupEnd();
+            return responseData;
         } catch (error) {
             console.error('❌ Erro na requisição:', error);
+            console.groupEnd();
             throw error;
         }
     }
 
     async query(endpoint, options = {}) {
         await this.ensureApiUrl();
-
-        const url = `${this.apiUrl}/api/${endpoint}`;
-        console.log('🔍 Fazendo requisição para:', url);
-
+        
+        console.group('🔍 Query ao Servidor');
+        console.log('URL:', `${this.apiUrl}/api/${endpoint}`);
+        console.log('Método:', options.method || 'GET');
+        
         try {
-            const response = await fetch(url, {
+            const headers = {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('userToken')}`
+            };
+            
+            // Remover header problemático do ngrok
+            const response = await fetch(`${this.apiUrl}/api/${endpoint}`, {
                 ...options,
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
+                    ...headers,
                     ...options.headers
-                }
+                },
+                redirect: 'follow'
             });
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                console.error('❌ Erro na resposta:', {
-                    status: response.status,
-                    statusText: response.statusText,
-                    body: errorText
-                });
-                throw new Error(`${response.status}: ${errorText}`);
+            
+            // Verificar se a resposta é HTML
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('text/html')) {
+                // Tentar reconectar usando uma nova URL do ngrok
+                console.warn('⚠️ Recebido HTML do ngrok, tentando reconectar...');
+                await this.initializeApiUrl();
+                // Tentar novamente com a nova URL
+                return this.query(endpoint, options);
             }
 
-            const data = await response.json();
-            console.log('📥 Resposta:', data);
-            return data;
+            const responseText = await response.text();
+            let responseData;
+            
+            try {
+                responseData = JSON.parse(responseText);
+                console.log('📥 Resposta parseada:', responseData);
+            } catch (parseError) {
+                if (responseText.includes('ngrok')) {
+                    throw new Error('Erro de conexão com ngrok - reconectando...');
+                }
+                console.error('❌ Erro ao processar resposta:', responseText);
+                throw new Error('Resposta inválida do servidor');
+            }
+
+            if (!response.ok) {
+                throw new Error(responseData.message || `Erro HTTP: ${response.status}`);
+            }
+
+            console.groupEnd();
+            return responseData;
 
         } catch (error) {
-            console.error('❌ Erro na requisição:', error);
+            console.error('❌ Erro na query:', error);
+            console.groupEnd();
+            
+            if (error.message.includes('Failed to fetch')) {
+                // Tentar reconectar com servidor
+                await this.initializeApiUrl();
+                return this.query(endpoint, options);
+            }
+            
             throw error;
         }
     }
@@ -218,124 +266,84 @@ export class Database {
         }
     }
 
+    getHeaders() {
+        const headers = {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        };
+        const token = localStorage.getItem('userToken');
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+        return headers;
+    }
+
     async getCharactersByUserId(userId) {
         try {
-            console.log('🔍 Buscando personagens no banco para usuário:', userId);
-            
-            const response = await this.query(`characters?userId=${userId}`, {
+            console.log('🎮 Buscando Personagens');
+            console.log('ID do usuário:', userId);
+
+            await this.ensureApiUrl(); // Garante que this.apiUrl esteja definido
+
+            // ADICIONAR ESTE LOG
+            console.log('🔍 this.apiUrl:', this.apiUrl);
+            const url = `${this.apiUrl}/api/characters?userId=${userId}`; // Defina a variável url aqui
+
+            const response = await fetch(url, {
                 method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('userToken')}`
-                }
+                headers: this.getHeaders()
             });
 
-            console.log('📊 Dados brutos do servidor:', response);
+            if (!response.ok) {
+                throw new Error(`Erro ao buscar personagens: ${response.status}`);
+            }
 
-            const charactersData = response.data || response.characters || [];
-            const characters = Array.isArray(charactersData) ? charactersData : [charactersData];
-            
-            const mappedCharacters = characters.map(char => {
-                console.log('🔍 Dados brutos recebidos do banco:', char.face_expression);
+            const data = await response.json();
+            console.log('🔍 Query ao Servidor');
+            console.log('URL:', url);
+            console.log('Método: GET');
+            console.log('📥 Resposta parseada:', data);
 
-                // Converter camelCase para snake_case
-                const mapped = {
-                    id: char.id,
-                    user_id: char.userId || userId,
-                    name: char.name,
-                    main_color: char.mainColor || char.main_color,
-                    skin_color: char.skinColor || char.skin_color,
-                    accent_color: char.accentColor || char.accent_color,
-                    top_radius: char.topRadius || char.top_radius,
-                    bottom_radius: char.bottomRadius || char.bottom_radius,
-                    face_expression: char.faceExpression || char.face_expression,
-                    equipment: char.equipment
-                };
-
-                // Validar e aplicar valores padrão
-                Object.entries(mapped).forEach(([key, value]) => {
-                    if (value === undefined || value === null) {
-                        console.warn(`⚠️ Campo ${key} indefinido, usando valor padrão`);
-                        const defaultKey = key
-                            .split('_')
-                            .map((part, i) => i > 0 ? part.charAt(0).toUpperCase() + part.slice(1) : part)
-                            .join('');
-                        mapped[key] = CHARACTER_CONFIG[defaultKey];
-                    }
-                });
-
-                console.log('✨ Dados mapeados para snake_case:', mapped);
-                return mapped;
-            });
-
-            console.log('✅ Personagens processados:', mappedCharacters);
-            return mappedCharacters;
-
+            if (data.success) {
+                console.log(`✅ Personagens carregados via characters?userId=${userId}: ${data.characters.length}`);
+                return data.characters;
+            } else {
+                console.warn('Nenhum personagem encontrado ou erro na resposta');
+                return [];
+            }
         } catch (error) {
-            console.error('❌ Erro ao buscar personagens:', error);
+            console.error('Erro ao buscar personagens:', error);
             throw error;
         }
     }
 
-    async saveCharacter(characterData) {
-        console.log('💾 Iniciando salvamento do personagem:', characterData);
-
-        try {
-            // Validar campos obrigatórios usando snake_case
-            const requiredFields = {
-                user_id: 'ID do usuário',
-                name: 'Nome do personagem',
-                face_expression: 'Expressão facial',
-                main_color: 'Cor principal',
-                skin_color: 'Cor da pele',
-                accent_color: 'Cor do rosto',
-                top_radius: 'Raio superior',
-                bottom_radius: 'Raio inferior'
-            };
-
-            // Verificar campos nulos ou undefined
-            for (const [field, label] of Object.entries(requiredFields)) {
-                if (!characterData[field]) {
-                    throw new Error(`Campo ${label} não pode ser vazio`);
-                }
-            }
-
-            // Converter números e garantir formato correto
-            const formattedData = {
-                userId: characterData.user_id,
-                name: characterData.name,
-                mainColor: characterData.main_color,
-                skinColor: characterData.skin_color,
-                accentColor: characterData.accent_color,
-                topRadius: Number(characterData.top_radius),
-                bottomRadius: Number(characterData.bottom_radius),
-                faceExpression: characterData.face_expression,
-                equipmentData: characterData.equipment_data || '{}'
-            };
-
-            // Validar números
-            if (isNaN(formattedData.topRadius) || isNaN(formattedData.bottomRadius)) {
-                throw new Error('Valores de raio inválidos');
-            }
-
-            console.log('📤 Dados formatados para envio:', formattedData);
-
-            const options = {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('userToken')}`
-                },
-                body: JSON.stringify(formattedData)
-            };
-
-            const result = await this.query('characters', options);
-            return result;
-
-        } catch (error) {
-            console.error('❌ Erro detalhado ao salvar:', error);
-            throw error;
+    processCharacterResponse(response) {
+        if (!response || typeof response !== 'object') {
+            throw new Error('Resposta inválida do servidor');
         }
+
+        const charactersData = response.data || response.characters || [];
+        const characters = Array.isArray(charactersData) ? charactersData : [charactersData];
+        
+        // Garantir que todos os campos estejam em camelCase
+        return characters.map(char => ({
+            id: char.id,
+            userId: char.userId,
+            name: char.name,
+            mainColor: char.mainColor,
+            skinColor: char.skinColor,
+            accentColor: char.accentColor,
+            topRadius: Number(char.topRadius),
+            bottomRadius: Number(char.bottomRadius),
+            faceExpression: string(char.faceExpression),
+            equipment: typeof char.equipment === 'string' ? 
+                JSON.parse(char.equipment) : (char.equipment || {}),
+            createdAt: char.createdAt
+        }));
+    }
+
+    async saveCharacter(characterData) {
+        return this.characterOperation('create', characterData);
     }
 
     async deleteCharacter(character) {

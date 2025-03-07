@@ -4,33 +4,70 @@ import { CameraController } from '../cameraControllerLobby.js';
 
 export class CharacterPreviewController {
     constructor(canvas, container) {
-        this.renderSystem = RenderSystem.getInstance();
+        console.log('🎨 Inicializando preview do personagem...');
         this.initialize(canvas, container);
     }
 
     initialize(canvas, container) {
-        console.log('🎨 Inicializando preview do personagem...');
-        
-        // Inicializar sistema de renderização
-        const { scene, camera, renderer } = this.renderSystem.initialize(canvas, container);
-        this.scene = scene;
-        
-        // Criar cena espacial
-        this.spaceScene = new SpaceScene(scene, camera);
-        
-        // Configurar câmera inicial
-        camera.position.set(0, 2, 5);
-        camera.lookAt(0, 0, 0);
-        
-        // Configurar câmera
-        this.cameraController = new CameraController(camera, renderer, scene);
-        this.spaceScene.setCameraController(this.cameraController);
-        
-        // Ativar animação
-        this.renderSystem.setActiveScene(this.spaceScene);
-        this.renderSystem.animate();
+        try {
+            const renderSystem = RenderSystem.getInstance();
+            const { scene, camera, renderer } = renderSystem.initialize(canvas, container);
+            
+            this.renderSystem = renderSystem; // Importante: guardar referência
+            this.scene = scene;
+            this.camera = camera;
+            this.renderer = renderer;
+            
+            // Inicializar cena espacial
+            this.spaceScene = new SpaceScene(this.scene, this.camera);
+            
+            // Setup inicial da câmera
+            this.camera.position.set(0, 1, 4);
+            this.camera.lookAt(0, 0, 0);
+            
+            // Inicializar controles de câmera
+            this.controls = new CameraController(this.camera, this.renderer, this.scene);
+            
+            // Forçar modo cinematográfico inicial
+            this.controls.enableCinematicMode();
+            
+            // Definir SpaceScene como cena ativa
+            this.renderSystem.setActiveScene(this.spaceScene);
+            this.spaceScene.setCameraController(this.controls);
+            
+            // Configurar botão de órbita
+            this.setupOrbitButton();
+            
+            // Iniciar a animação
+            this.renderSystem.animate();
+            
+            console.log('✅ Preview inicializado com sucesso');
+        } catch (error) {
+            console.error('❌ Erro ao inicializar preview:', error);
+            throw error;
+        }
+    }
 
-        console.log('✅ Preview inicializado com sucesso');
+    setupOrbitButton() {
+        const orbitButton = document.getElementById('toggleOrbit');
+        if (orbitButton) {
+            console.log('🎯 Configurando botão de órbita');
+            
+            // Limpar eventos antigos
+            const newButton = orbitButton.cloneNode(true);
+            orbitButton.parentNode.replaceChild(newButton, orbitButton);
+            
+            // Adicionar novo evento
+            newButton.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (this.controls) {
+                    this.controls.toggleCinematicMode();
+                }
+            });
+
+            // Garantir estado inicial do botão
+            newButton.classList.toggle('active', this.controls.cinematicMode);
+        }
     }
 
     updateCharacter(character) {

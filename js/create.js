@@ -11,7 +11,7 @@ class CharacterCreator {
         this.db = new Database();
         this.character3D = null;
         // Criar personagem em modo de criação (usando valores padrão)
-        this.currentCharacter = new Character({}, true);
+        this.currentCharacter = new Character(CHARACTER_CONFIG.defaults, true);
         this.renderSystem = RenderSystem.getInstance();
         this.isDragging = false;
         
@@ -33,7 +33,7 @@ class CharacterCreator {
             // 1. Verificar autenticação
             if (!authGuard.isUserActive()) {
                 console.log('Usuário não autenticado, redirecionando para login');
-                localStorage.setItem('redirect_after_login', '/pages/create.html');
+                localStorage.setItem('redirectAfterLogin', '/pages/create.html');
                 window.location.replace('/pages/login.html');
                 return;
             }
@@ -46,6 +46,7 @@ class CharacterCreator {
 
             // 3. Inicializar personagem
             this.initCharacter();
+            this.resetCharacterForm();
 
             // 4. Configurar eventos
             this.setupEventListeners();
@@ -106,17 +107,28 @@ class CharacterCreator {
         this.spaceScene.setCameraController(this.cameraController);
         this.renderSystem.setActiveScene(this.spaceScene);
         
-        // Garantir que o modo cinematográfico esteja ativado inicialmente
-        this.cameraController.cinematicMode = true;
-        
-        // Configurar evento do botão de órbita com estado correto
+        // Forçar modo cinematográfico inicial
+        this.cameraController.enableCinematicMode();
+
+        // Configurar botão de órbita
         const orbitButton = document.getElementById('toggleOrbit');
         if (orbitButton) {
-            orbitButton.classList.add('active');
-            orbitButton.addEventListener('click', () => {
-                this.cameraController.toggleCinematicMode();
-                orbitButton.classList.toggle('active');
+            console.log('🎯 Configurando botão de órbita');
+            
+            // Limpar eventos antigos
+            const newButton = orbitButton.cloneNode(true);
+            orbitButton.parentNode.replaceChild(newButton, orbitButton);
+            
+            // Adicionar novo evento
+            newButton.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (this.cameraController) {
+                    this.cameraController.toggleCinematicMode();
+                }
             });
+
+            // Garantir estado inicial do botão
+            newButton.classList.toggle('active', this.cameraController.cinematicMode);
         }
 
         // Iniciar animação
@@ -274,8 +286,10 @@ class CharacterCreator {
 
         // Handler unificado para expressão facial
         document.getElementById('faceExpression').addEventListener('input', (e) => {
+            console.log('🎭 [CREATE] Input facial detectado:', e.target.value);
             if (this.currentCharacter) {
                 this.currentCharacter.faceExpression = e.target.value;
+                console.log('🎭 [CREATE] Expressão atualizada no character:', this.currentCharacter.faceExpression);
                 this.currentCharacter.update3DModel(this.character3D);
             }
         });
@@ -309,9 +323,9 @@ class CharacterCreator {
         }
 
         // Validar raios
-        if (this.topRadius < 0.5 || this.topRadius > 1.0 || 
-            this.bottomRadius < 0.5 || this.bottomRadius > 1.0) {
-            alert('Os valores dos raios devem estar entre 0.5 e 1.0');
+        if (this.topRadius < 0.25 || this.topRadius > 1.0 || 
+            this.bottomRadius < 0.25 || this.bottomRadius > 1.0) {
+            alert('Os valores dos raios devem estar entre 0.25 e 1.0');
             return false;
         }
 
@@ -327,20 +341,21 @@ class CharacterCreator {
 
     async saveCharacter() {
         try {
+            console.log('🎭 [CREATE] Iniciando salvamento, expressão atual:', 
+                document.getElementById('faceExpression').value);
             const userId = authGuard.getActiveUserId();
             if (!userId) throw new Error('ID do usuário não encontrado');
 
-            // Preparar dados no formato snake_case para banco
             const characterData = {
-                user_id: userId,
+                userId: userId,
                 name: document.getElementById('charName').value.trim(),
-                face_expression: document.getElementById('faceExpression').value.trim() || CHARACTER_CONFIG.defaults.faceExpression,
-                main_color: document.getElementById('mainColor').value || CHARACTER_CONFIG.defaults.mainColor,
-                skin_color: document.getElementById('skinColor').value || CHARACTER_CONFIG.defaults.skinColor,
-                accent_color: document.getElementById('accentColor').value || CHARACTER_CONFIG.defaults.accentColor,
-                top_radius: this.topRadius || CHARACTER_CONFIG.defaults.topRadius,
-                bottom_radius: this.bottomRadius || CHARACTER_CONFIG.defaults.bottomRadius,
-                equipment_data: JSON.stringify(CHARACTER_CONFIG.defaults.equipment || {})
+                faceExpression: document.getElementById('faceExpression').value.trim(),
+                mainColor: document.getElementById('mainColor').value || CHARACTER_CONFIG.defaults.mainColor,
+                skinColor: document.getElementById('skinColor').value || CHARACTER_CONFIG.defaults.skinColor,
+                accentColor: document.getElementById('accentColor').value || CHARACTER_CONFIG.defaults.accentColor,
+                topRadius: this.topRadius || CHARACTER_CONFIG.defaults.topRadius,
+                bottomRadius: this.bottomRadius || CHARACTER_CONFIG.defaults.bottomRadius,
+                equipment: CHARACTER_CONFIG.defaults.equipment || {}
             };
 
             // Validar dados antes de enviar
@@ -351,6 +366,7 @@ class CharacterCreator {
             });
 
             console.log('📤 Dados validados para envio:', characterData);
+            console.log('🎭 [CREATE] Dados preparados para envio:', characterData);
             
             const result = await this.db.saveCharacter(characterData);
 
@@ -362,7 +378,7 @@ class CharacterCreator {
             }
 
         } catch (error) {
-            console.error('❌ Erro ao salvar:', error);
+            console.error('❌ [CREATE] Erro ao salvar:', error);
             alert(`Erro ao salvar: ${error.message}`);
         }
     }
@@ -406,8 +422,8 @@ class CharacterCreator {
             handle.style.top = `${y * 100}%`;
             
             // Calcular e atualizar raios
-            this.topRadius = 0.5 + (x * 0.5); // 0.5 a 1.0
-            this.bottomRadius = 0.5 + ((1 - y) * 0.5); // 0.5 a 1.0
+            this.topRadius = 0.25 + (x * 0.75); // 0.25 a 1.0
+            this.bottomRadius = 0.25 + ((1 - y) * 0.75); // 0.25 a 1.0
             
             if (this.currentCharacter) {
                 this.currentCharacter.topRadius = this.topRadius;
@@ -462,6 +478,11 @@ class CharacterCreator {
 
     resetCharacterForm() {
         // Usar valores do CHARACTER_CONFIG.defaults para reset
+        document.getElementById('faceExpression').value = CHARACTER_CONFIG.defaults.faceExpression;
+        document.getElementById('mainColor').value = CHARACTER_CONFIG.defaults.mainColor;
+        document.getElementById('skinColor').value = CHARACTER_CONFIG.defaults.skinColor;
+        document.getElementById('accentColor').value = CHARACTER_CONFIG.defaults.accentColor;
+
         this.mainColor = CHARACTER_CONFIG.defaults.mainColor;
         this.skinColor = CHARACTER_CONFIG.defaults.skinColor;
         this.accentColor = CHARACTER_CONFIG.defaults.accentColor;

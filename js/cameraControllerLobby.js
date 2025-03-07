@@ -1,41 +1,35 @@
-import { THREE, OrbitControls } from './core/three.js';
+import { THREE } from './core/three.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { BaseCameraController } from './core/baseCameraController.js';
 
-export class CameraController {
+export class CameraController extends BaseCameraController {
     constructor(camera, renderer, scene) {
-        this.camera = camera;
+        super(camera, scene);
         this.renderer = renderer;
-        this.scene = scene;
         this.controls = null;
-        this.enabled = true;
-        this.cinematicMode = true;
+        this.cinematicMode = true; // Garantir que inicie em modo cinematográfico
 
-        // Posição padrão da câmera
-        this.defaultPosition = new THREE.Vector3(0, 2, 5);
-        this.defaultTarget = new THREE.Vector3(0, 0, 0);
-
-        // Configurações da câmera cinematográfica ajustadas
+        // Configurações específicas da câmera cinematográfica
         this.cinematicConfig = {
-            rotationSpeed: 0.00008,   // Velocidade reduzida
-            radiusMin: 3,             // Distância mínima reduzida
-            radiusMax: 6,             // Distância máxima reduzida
-            heightMin: 1,             // Altura mínima mantida
-            heightMax: 2.5,           // Altura máxima reduzida
-            heightSpeed: 0.0002,      // Velocidade de altura reduzida
-            radiusSpeed: 0.0003,      // Velocidade do raio reduzida
-            tiltSpeed: 0.0001,        // Velocidade de inclinação reduzida
-            tiltAngle: Math.PI / 8    // Ângulo de inclinação reduzido
+            rotationSpeed: 0.00008,
+            radiusMin: 3,
+            radiusMax: 6,
+            heightMin: 1,
+            heightMax: 2.5,
+            heightSpeed: 0.0002,
+            radiusSpeed: 0.0003,
+            tiltSpeed: 0.0001,
+            tiltAngle: Math.PI / 8
         };
 
+        // Inicializar controles e estado cinematográfico
         this.setupControls();
-        this.resetCamera();
+        this.enableCinematicMode(); // Novo método para garantir estado inicial
 
-        // Configurar estado inicial do botão
-        const button = document.getElementById('toggleOrbit');
-        if (button) button.classList.add('active');
+        // Inicializar estado do botão
+        this.initOrbitButton();
 
-        // Garantir estado inicial correto
-        this.cinematicMode = true;
-        this.updateOrbitButtonState();
+        console.log('🎥 CameraController inicializado, modo cinematográfico:', this.cinematicMode);
     }
 
     setupControls() {
@@ -68,6 +62,21 @@ export class CameraController {
             this.controls.update();
         } catch (error) {
             console.error('Erro nos controles:', error);
+        }
+    }
+
+    initOrbitButton() {
+        const button = document.getElementById('toggleOrbit');
+        if (button) {
+            // Configurar estado inicial do botão
+            button.classList.toggle('active', this.cinematicMode);
+            button.querySelector('.material-icons').textContent = 
+                this.cinematicMode ? 'sync' : 'sync_disabled';
+
+            // Adicionar listener do botão
+            button.addEventListener('click', () => {
+                this.toggleCinematicMode();
+            });
         }
     }
 
@@ -114,20 +123,32 @@ export class CameraController {
         }
     }
 
+    // Novo método para forçar modo cinematográfico
+    enableCinematicMode() {
+        this.cinematicMode = true;
+        if (this.controls) {
+            this.controls.enabled = false;
+        }
+        this.resetCamera();
+        this.updateOrbitButtonState();
+    }
+
     toggleCinematicMode() {
+        console.log('🎬 Alternando modo cinematográfico');
+        console.log('Estado anterior:', this.cinematicMode);
+        
         this.cinematicMode = !this.cinematicMode;
         
-        // Atualizar controles
         if (this.controls) {
             this.controls.enabled = !this.cinematicMode;
         }
-        
-        this.updateOrbitButtonState();
 
-        // Resetar posição se entrando no modo cinematográfico
         if (this.cinematicMode) {
             this.resetCamera();
         }
+
+        this.updateOrbitButtonState();
+        console.log('Novo estado:', this.cinematicMode);
     }
 
     disableCinematicMode() {
@@ -138,18 +159,13 @@ export class CameraController {
         if (button) button.classList.remove('active');
     }
 
-    // Novo método para gerenciar o estado do botão
+    // Método para gerenciar o estado do botão
     updateOrbitButtonState() {
         const button = document.getElementById('toggleOrbit');
         if (button) {
-            // Quando cinematicMode é true, o botão deve estar ativo
-            if (this.cinematicMode) {
-                button.classList.add('active');
-                button.querySelector('.material-icons').textContent = 'sync';
-            } else {
-                button.classList.remove('active');
-                button.querySelector('.material-icons').textContent = 'sync_disabled';
-            }
+            button.classList.toggle('active', this.cinematicMode);
+            button.querySelector('.material-icons').textContent = 
+                this.cinematicMode ? 'sync' : 'sync_disabled';
         }
     }
 
@@ -160,5 +176,13 @@ export class CameraController {
             this.controls.update();
         }
         this.camera.lookAt(this.defaultTarget);
+    }
+
+    dispose() {
+        super.dispose();
+        if (this.controls) {
+            this.controls.dispose();
+        }
+        this.controls = null;
     }
 }

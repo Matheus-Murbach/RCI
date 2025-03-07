@@ -7,8 +7,8 @@ export const CHARACTER_CONFIG = {
         mainColor: '#FF0000',
         skinColor: '#FFA07A', 
         accentColor: '#000000',
-        topRadius: 0.75,
-        bottomRadius: 0.75,
+        topRadius: 0.62,
+        bottomRadius: 0.62,
         faceExpression: "'-'",
         name: '',
         equipment: {
@@ -24,7 +24,7 @@ export const CHARACTER_CONFIG = {
             minLength: 1
         },
         radius: {
-            min: 0.5,
+            min: 0.25,
             max: 1.0
         }
     }
@@ -34,39 +34,22 @@ export class Character {
     constructor(data = {}, isCreationMode = false) {
         console.log('🎭 Modo:', isCreationMode ? 'Criação' : 'Carregamento');
         console.log('📥 Dados recebidos:', data);
+        console.log('🎭 [CHARACTER] Construindo personagem, dados recebidos:', 
+            data.faceExpression);
         
-        // Em modo de criação, usar valores padrão
-        const baseData = isCreationMode ? CHARACTER_CONFIG.defaults : {};
-        
-        // Garantir valores padrão para todos os campos
-        const defaults = {
-            id: null,
-            user_id: null,
-            name: '',
-            mainColor: CHARACTER_CONFIG.defaults.mainColor,
-            skinColor: CHARACTER_CONFIG.defaults.skinColor,
-            accentColor: CHARACTER_CONFIG.defaults.accentColor,
-            topRadius: CHARACTER_CONFIG.defaults.topRadius,
-            bottomRadius: CHARACTER_CONFIG.defaults.bottomRadius,
-            faceExpression: CHARACTER_CONFIG.defaults.faceExpression,
-            equipment: CHARACTER_CONFIG.defaults.equipment,
-            ...baseData
-        };
+        // ADICIONAR ESTE LOG
+        console.log('🔍 faceExpression recebido:', data.faceExpression);
 
-        // Processar dados recebidos
-        const processedData = this.processInputData(data, defaults, isCreationMode);
-        
-        // Atribuir valores processados
-        this.id = processedData.id;
-        this.userId = processedData.user_id;
-        this.name = processedData.name;
-        this.mainColor = processedData.mainColor;
-        this.skinColor = processedData.skinColor;
-        this.accentColor = processedData.accentColor;
-        this.topRadius = processedData.topRadius;
-        this.bottomRadius = processedData.bottomRadius;
-        this.faceExpression = processedData.faceExpression;
-        this.equipment = processedData.equipment;
+        this.id = data.id;
+        this.userId = data.userId;
+        this.name = data.name;
+        this.mainColor = data.mainColor;
+        this.skinColor = data.skinColor;
+        this.accentColor = data.accentColor;
+        this.topRadius = data.topRadius;
+        this.bottomRadius = data.bottomRadius;
+        this.faceExpression = data.faceExpression;
+        this.equipment = data.equipment;
         
         this.materialSystem = MaterialSystem.getInstance();
         this.character3D = null;
@@ -75,51 +58,34 @@ export class Character {
     }
 
     processInputData(data, defaults, isCreationMode) {
-        // Garantir que dados do banco tenham prioridade sobre os padrões
+        console.log('🎭 [CHARACTER] Processando dados, expressão:', 
+            data.faceExpression);
         const processed = {
-            id: data.id || defaults.id,
-            user_id: data.user_id || data.userId || defaults.user_id,
-            name: data.name || defaults.name,
-            mainColor: isCreationMode ? defaults.mainColor : 
-                      (data.main_color || data.mainColor || defaults.mainColor),
-            skinColor: isCreationMode ? defaults.skinColor :
-                      (data.skin_color || data.skinColor || defaults.skinColor),
-            accentColor: isCreationMode ? defaults.accentColor :
-                        (data.accent_color || data.accentColor || defaults.accentColor),
-            topRadius: Number(isCreationMode ? defaults.topRadius :
-                     (data.top_radius || data.topRadius || defaults.topRadius)),
-            bottomRadius: Number(isCreationMode ? defaults.bottomRadius :
-                       (data.bottom_radius || data.bottomRadius || defaults.bottomRadius)),
-            faceExpression: this.validateFaceExpression(
-                isCreationMode ? defaults.faceExpression :
-                (data.face_expression || data.faceExpression || defaults.faceExpression)
-            ),
-            equipment: isCreationMode ? defaults.equipment :
-                      (data.equipment || defaults.equipment)
+            id: data.id,
+            userId: data.userId,
+            name: data.name,
+            mainColor: data.mainColor,
+            skinColor: data.skinColor,
+            accentColor: data.accentColor,
+            topRadius: data.topRadius,
+            bottomRadius: data.bottomRadius,
+            faceExpression: data.faceExpression,
+            equipment: data.equipment
         };
 
         console.log('🔄 Dados processados:', processed);
+        console.log('🎭 [CHARACTER] Dados processados, expressão final:', 
+            processed.faceExpression);
         return processed;
-    }
 
-    validateFaceExpression(expression) {
-        const config = CHARACTER_CONFIG.validation.faceExpression;
-        
-        if (!expression) return CHARACTER_CONFIG.defaults.faceExpression;
-        
-        // Limitar tamanho e remover espaços
-        const cleaned = expression.trim().slice(0, config.maxLength);
-        
-        // Garantir tamanho mínimo
-        return cleaned.length < config.minLength ? 
-               CHARACTER_CONFIG.defaults.faceExpression : 
-               cleaned;
     }
 
     createHead() {
+        console.log('🎭 [CHARACTER] Criando cabeça com expressão:', 
+            this.faceExpression);
         const headGeometry = new THREE.SphereGeometry(0.5, 32, 32);
         const canvas = document.createElement('canvas');
-        canvas.width = 1024; // Aumentado para melhor resolução
+        canvas.width = 1024;
         canvas.height = 512;
         const ctx = canvas.getContext('2d');
 
@@ -133,11 +99,8 @@ export class Character {
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         
-        // Validar e garantir expressão facial válida
-        const expression = this.faceExpression || CHARACTER_CONFIG.defaults.faceExpression;
-        
         // Desenhar expressão
-        ctx.fillText(expression, canvas.width / 2, canvas.height / 2);
+        ctx.fillText(this.faceExpression, canvas.width / 2, canvas.height / 2);
 
         const texture = new THREE.CanvasTexture(canvas);
         texture.anisotropy = 16; // Melhorar qualidade da textura
@@ -150,6 +113,7 @@ export class Character {
             envMapIntensity: 1.0
         });
 
+        console.log('🎭 [CHARACTER] Expressão desenhada na textura:',  this.faceExpression);
         return new THREE.Mesh(headGeometry, headMaterial);
     }
 
@@ -172,6 +136,15 @@ export class Character {
 
     // Método para criar a representação 3D do personagem
     create3DModel() {
+        console.log('🎮 Criando modelo 3D com dados:', {
+            mainColor: this.mainColor,
+            skinColor: this.skinColor,
+            accentColor: this.accentColor,
+            topRadius: this.topRadius,
+            bottomRadius: this.bottomRadius,
+            faceExpression: this.faceExpression
+        });
+
         const group = new THREE.Group();
 
         // Corpo com dimensões corretas
@@ -206,6 +179,8 @@ export class Character {
 
     // Método para atualizar o modelo 3D existente
     update3DModel(model) {
+        console.log('🎭 [CHARACTER] Atualizando modelo 3D, expressão:', 
+            this.faceExpression);
         if (!model || model.children.length < 2) {
             console.warn('⚠️ Modelo inválido para atualização');
             return;
@@ -236,6 +211,7 @@ export class Character {
         const newHead = this.createHead();
         head.material = newHead.material;
         head.material.needsUpdate = true;
+        console.log('🎭 [CHARACTER] Modelo 3D atualizado com expressão');
     }
 
     updateShape(topRadius, bottomRadius) {
@@ -255,23 +231,6 @@ export class Character {
         }
     }
 
-    updateFaceExpression(expression) {
-        if (!expression) return;
-        
-        this.faceExpression = expression;
-        
-        // Se tiver um modelo 3D, atualizar imediatamente
-        if (this.character3D) {
-            const head = this.character3D.children[1];
-            if (head && head.material) {
-                const newHead = this.createHead();
-                head.material.dispose();
-                head.material = newHead.material;
-                head.material.needsUpdate = true;
-            }
-        }
-    }
-
     // Método para salvar o personagem
     save() {
         const characters = loadCharacters();
@@ -287,30 +246,20 @@ export class Character {
     }
 
     update(data) {
-        let needsUpdate = false;
-
-        if (data.name) this.name = data.name;
-        if (data.main_color) this.mainColor = data.main_color;
-        if (data.skin_color) this.skinColor = data.skin_color;
-        if (data.accent_color) this.accentColor = data.accent_color;
-        if (data.top_radius) this.topRadius = data.top_radius;
-        if (data.bottom_radius) this.bottomRadius = data.bottom_radius;
-        if (data.face_expression) this.faceExpression = data.face_expression;
-        if (data.equipment) this.equipment = data.equipment;
+        this.name = data.name;
+        this.mainColor = data.mainColor;
+        this.skinColor = data.skinColor;
+        this.accentColor = data.accentColor;
+        this.topRadius = data.topRadius;
+        this.bottomRadius = data.bottomRadius;
+        this.faceExpression = data.faceExpression;
+        this.equipment = data.equipment;
 
         if (this.character3D) {
             this.update3DModel(this.character3D);
         }
-
-        return this;
     }
 
-    reset() {
-        Object.assign(this, CHARACTER_CONFIG.defaults);
-        if (this.character3D) {
-            this.update3DModel(this.character3D);
-        }
-    }
 }
 
 export class Item {

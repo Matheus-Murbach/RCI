@@ -34,17 +34,18 @@ class Game {
             const characterData = JSON.parse(savedCharacter);
             console.log('📝 Dados do personagem:', characterData);
             
-            // Criar instância do personagem mantendo os dados originais do banco
+            // Corrigir o mapeamento dos dados do personagem
             this.character = new Character({
                 id: characterData.id,
                 name: characterData.name,
-                face_expression: characterData.face_expression,
-                main_color: characterData.main_color,
-                skin_color: characterData.skin_color,
-                accent_color: characterData.accent_color,
-                top_radius: characterData.top_radius,
-                bottom_radius: characterData.bottom_radius,
-                userId: characterData.user_id
+                mainColor: characterData.mainColor || characterData.main_color,
+                skinColor: characterData.skinColor || characterData.skin_color,
+                accentColor: characterData.accentColor || characterData.accent_color,
+                topRadius: characterData.topRadius || characterData.top_radius,
+                bottomRadius: characterData.bottomRadius || characterData.bottom_radius,
+                faceExpression: characterData.faceExpression || characterData.face_expression,
+                userId: characterData.userId || characterData.user_id,
+                equipment: characterData.equipment || {}
             });
             
             console.log('✅ Personagem criado:', this.character);

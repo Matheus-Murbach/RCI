@@ -4,8 +4,7 @@ import {
     RenderPass,
     UnrealBloomPass,
     SSAOPass,
-    SAOPass,
-    SMAAPass
+    SMAAPass  // Agora está sendo importado corretamente
 } from './three.js';
 
 export class RenderSystem {
@@ -41,20 +40,18 @@ export class RenderSystem {
         const renderer = new THREE.WebGLRenderer({
             canvas,
             antialias: true,
-            logarithmicDepthBuffer: true,
-            alpha: true
+            powerPreference: "high-performance"
         });
 
-        // Configurar renderer para suportar sombras de alta qualidade
+        // Usar novas propriedades do THREE.js r155
+        renderer.outputColorSpace = THREE.SRGBColorSpace; // Nova propriedade
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1;
+        
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(container.clientWidth, container.clientHeight, false);
         renderer.shadowMap.enabled = true;
         renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-        renderer.physicallyCorrectLights = true; // Habilitar iluminação física correta
-        renderer.outputEncoding = THREE.sRGBEncoding; // Melhor precisão de cores
-        renderer.toneMapping = THREE.ACESFilmicToneMapping; // Melhor mapeamento de tons
-        renderer.toneMappingExposure = 1;
-
-        renderer.setSize(container.offsetWidth, container.offsetHeight);
-        renderer.setPixelRatio(window.devicePixelRatio);
 
         this.scene = scene;
         this.camera = camera;
@@ -108,19 +105,18 @@ export class RenderSystem {
     }
 
     animate() {
+        if (this.animationFrame) return; // Evitar múltiplas animações
+        
         const animate = () => {
             this.animationFrame = requestAnimationFrame(animate);
 
+            // Atualizar cena ativa
             if (this.activeScene) {
                 this.activeScene.update();
             }
 
-            if (this.activeScene?.cameraController) {
-                this.activeScene.cameraController.update();
-            }
-
-            // Usar o composer ao invés do renderer direto
-            if (this.composer) {
+            // Renderizar usando composer ou renderer
+            if (this.composer && this.composer.enabled) {
                 this.composer.render();
             } else if (this.renderer && this.scene && this.camera) {
                 this.renderer.render(this.scene, this.camera);

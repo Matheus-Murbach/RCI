@@ -68,38 +68,73 @@ class CharacterSelector {
         const userId = authGuard.getActiveUserId();
         console.log('👤 Carregando personagens para usuário:', userId);
 
-        try {
-            const characters = await this.db.getCharactersByUserId(userId);
-            console.log('📥 Personagens recebidos do banco:', characters);
+        let retryCount = 0;
+        const maxRetries = 3;
 
-            this.characters = characters.map(charData => {
-                console.log('🔄 Convertendo dados do personagem:', charData.name);
-                return new Character(charData);
-            });
-
-            console.log('✅ Total de personagens carregados:', this.characters.length);
-            this.displayCharacters();
-
-            if (this.characters.length > 0) {
-                console.log('🎯 Selecionando primeiro personagem');
-                this.selectCharacter(this.characters[0]);
+        while (retryCount < maxRetries) {
+            try {
+                const characters = await this.db.getCharactersByUserId(userId);
+                this.processCharacters(characters);
+                return;
+            } catch (error) {
+                console.error(`❌ Tentativa ${retryCount + 1}/${maxRetries} falhou:`, error);
+                retryCount++;
+                
+                if (retryCount === maxRetries) {
+                    this.handleError(error);
+                    return;
+                }
+                
+                // Esperar antes de tentar novamente
+                await new Promise(r => setTimeout(r, 1000 * retryCount));
             }
+        }
+    }
 
-        } catch (error) {
-            console.error('❌ Erro ao carregar personagens:', error);
-            this.handleError(error);
+    processCharacters(characters) {
+        console.log('📥 Personagens recebidos:', characters);
+        
+        this.characters = characters.map(charData => {
+            console.log('🔄 Processando:', charData.name);
+            
+            // ADICIONAR ESTE LOG
+            console.log('🔍 faceExpression antes do construtor:', charData.faceExpression);
+            
+            return new Character(charData);
+        });
+
+        this.displayCharacters();
+
+        if (this.characters.length > 0) {
+            this.selectCharacter(this.characters[0]);
         }
     }
 
     async initializeScene() {
-        const canvas = document.getElementById('characterPreview');
-        const container = canvas.parentElement;
-        
-        if (!canvas || !container) {
-            throw new Error('Canvas não encontrado');
-        }
+        try {
+            const canvas = document.getElementById('characterPreview');
+            const container = canvas.parentElement;
+            
+            if (!canvas || !container) {
+                throw new Error('Canvas ou container não encontrado');
+            }
 
-        this.previewController = new CharacterPreviewController(canvas, container);
+            this.previewController = new CharacterPreviewController(canvas, container);
+            
+            // Garantir que a câmera cinematográfica esteja ativada inicialmente
+            if (this.previewController.controls) {
+                this.previewController.controls.enableCinematicMode();
+                const orbitButton = document.getElementById('toggleOrbit');
+                if (orbitButton) {
+                    orbitButton.classList.add('active');
+                }
+            }
+            
+            return true;
+        } catch (error) {
+            console.error('❌ Erro ao inicializar cena:', error);
+            throw error;
+        }
     }
 
     displayCharacters() {
@@ -173,6 +208,8 @@ class CharacterSelector {
             if (this.selectedCharacter && authGuard.isUserActive()) {
                 // Salvar o personagem selecionado no localStorage
                 localStorage.setItem('selectedCharacter', JSON.stringify(this.selectedCharacter));
+                // Usar novo padrão camelCase
+                localStorage.removeItem('redirectAfterLogin');
                 window.location.href = 'game.html';
             }
         });
@@ -226,6 +263,8 @@ class CharacterSelector {
     handleError(error) {
         console.error('Erro:', error);
         setTimeout(() => {
+            // Garantir limpeza de todos os dados antes do logout
+            localStorage.removeItem('redirectAfterLogin');
             authGuard.logout();
         }, 3000);
     }
