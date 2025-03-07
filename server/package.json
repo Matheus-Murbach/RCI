@@ -1,7 +1,7 @@
 {
-  "name": "rpg-server",
+  "name": "rci-server",
   "version": "1.0.0",
-  "description": "Servidor SQLite para RPG Tabletop",
+  "description": "Servidor SQLite para RCI Tabletop",
   "main": "server.js",
   "engines": {
     "node": ">=18.0.0 <19.0.0"
