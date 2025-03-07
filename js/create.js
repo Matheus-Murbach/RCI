@@ -188,49 +188,6 @@ class CharacterCreator {
     }
 
     setupEventListeners() {
-        // Menu mobile toggle
-        const menuToggle = document.getElementById('menuToggle');
-        const controlsSection = document.querySelector('.controls-section');
-        
-        if (menuToggle && controlsSection) {
-            menuToggle.addEventListener('click', () => {
-                controlsSection.classList.toggle('active');
-                menuToggle.classList.toggle('active');
-            });
-
-            // Fechar menu ao clicar fora
-            document.addEventListener('click', (e) => {
-                if (!controlsSection.contains(e.target) && 
-                    !menuToggle.contains(e.target) && 
-                    controlsSection.classList.contains('active')) {
-                    controlsSection.classList.remove('active');
-                    menuToggle.classList.remove('active');
-                }
-            });
-        }
-
-        // Adicionar suporte para touch no controle de raio
-        const slider = document.getElementById('radiusSlider2D');
-        if (slider) {
-            slider.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                this.isDragging = true;
-                const touch = e.touches[0];
-                this.updateRadiusFromPosition(touch.clientX, touch.clientY);
-            }, { passive: false });
-
-            document.addEventListener('touchmove', (e) => {
-                if (this.isDragging) {
-                    e.preventDefault();
-                    const touch = e.touches[0];
-                    this.updateRadiusFromPosition(touch.clientX, touch.clientY);
-                }
-            }, { passive: false });
-
-            document.addEventListener('touchend', () => {
-                this.isDragging = false;
-            });
-        }
 
         // Botão Salvar
         document.getElementById('saveCharacter').addEventListener('click', async () => {
@@ -255,6 +212,25 @@ class CharacterCreator {
                 this.cameraController.toggleCinematicMode();
             }
         });
+
+        // Adicionar handler para o botão toggle da lista de personagens
+        const toggleBtn = document.getElementById('toggleCharacterList');
+        const controlsSection = document.querySelector('.character-list-section'); // Atualizado seletor
+        
+        if (toggleBtn && controlsSection) {
+            toggleBtn.addEventListener('click', () => {
+                controlsSection.classList.toggle('active');
+            });
+
+            // Fechar ao clicar fora
+            document.addEventListener('click', (e) => {
+                if (!controlsSection.contains(e.target) && 
+                    !toggleBtn.contains(e.target) && 
+                    controlsSection.classList.contains('active')) {
+                    controlsSection.classList.remove('active');
+                }
+            });
+        }
 
         // Inputs de cor
         ['mainColor', 'skinColor', 'accentColor'].forEach(id => {
@@ -296,6 +272,24 @@ class CharacterCreator {
 
         // Adicionar setup do controle de raio
         this.setupRadiusControl();
+    }
+
+    handleTouchStart(e) {
+        e.preventDefault();
+        this.isDragging = true;
+        const touch = e.touches[0];
+        this.updateRadiusFromPosition(touch.clientX, touch.clientY);
+    }
+
+    handleTouchMove(e) {
+        if (!this.isDragging) return;
+        e.preventDefault();
+        const touch = e.touches[0];
+        this.updateRadiusFromPosition(touch.clientX, touch.clientY);
+    }
+
+    handleTouchEnd() {
+        this.isDragging = false;
     }
 
     validateForm() {

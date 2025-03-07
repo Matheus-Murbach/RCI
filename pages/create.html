@@ -9,16 +9,17 @@
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 </head>
 <body>
-    <div id="characterCreation" class="screen">
-        <div class="controls-section">
-            <h2>Criar Personagem</h2>
-            
-            <!-- Seção de informações básicas -->
+    <div class="screen">
+        <button id="toggleCharacterList" class="toggle-character-list">
+            <span class="material-icons">menu</span>
+        </button>
+        
+        <div class="character-list-section">  <!-- Mudado de controls-section para character-list-section -->
+            <!-- Mover todo o conteúdo de criação para dentro desta seção -->
             <div class="basic-info">
                 <input type="text" id="charName" placeholder="Nome do Personagem">
             </div>
             
-            <!-- Substituir a seção eyes-section por: -->
             <div class="face-section">
                 <h3>Rosto do Personagem</h3>
                 <div class="face-input">
@@ -105,7 +106,7 @@
                 </button>
             </div>
         </div>
-
+        
         <div class="preview-section">
             <canvas id="characterPreview"></canvas>
             <div class="control-buttons">

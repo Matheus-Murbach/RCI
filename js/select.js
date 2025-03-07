@@ -218,6 +218,17 @@ class CharacterSelector {
         document.getElementById('logoutButton').addEventListener('click', () => {
             authGuard.logout();
         });
+
+        // Adicionar handler para o botão toggle da lista de personagens
+        const toggleBtn = document.getElementById('toggleCharacterList');
+        const charListSection = document.querySelector('.character-list-section');
+        
+        if (toggleBtn && charListSection) {
+            toggleBtn.addEventListener('click', () => {
+                charListSection.classList.toggle('active');
+            });
+
+        }
     }
 
     async deleteCharacter(character) {
