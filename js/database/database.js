@@ -1,5 +1,8 @@
+import { StateManager } from '../core/stateManager.js';
+
 export class Database {
     constructor() {
+        this.stateManager = StateManager.getInstance();
         this.apiUrl = null;
         this.maxRetries = 3;
         this.retryDelay = 2000;
@@ -77,9 +80,9 @@ export class Database {
             }
         };
 
-        const token = localStorage.getItem('userToken');
-        if (token) {
-            defaultOptions.headers['Authorization'] = `Bearer ${token}`;
+        const user = this.stateManager.getUser();
+        if (user.token) {
+            defaultOptions.headers['Authorization'] = `Bearer ${user.token}`;
             console.log('🔑 Token incluído na requisição');
         }
 
@@ -121,7 +124,7 @@ export class Database {
             const headers = {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('userToken')}`
+                'Authorization': `Bearer ${this.stateManager.getUser().token}`
             };
             
             // Remover header problemático do ngrok
@@ -223,7 +226,7 @@ export class Database {
         
         try {
             if (password !== null) {
-                console.log('🔑 Tentando login:', { username, apiUrl: this.apiUrl });
+                console.log('🔑 Tentando login:', { username });
                 
                 const response = await fetch(`${this.apiUrl}/api/users/login`, {
                     method: 'POST',
@@ -231,23 +234,28 @@ export class Database {
                         'Content-Type': 'application/json',
                         'Accept': 'application/json'
                     },
-                    body: JSON.stringify({ username, password }),
-                    timeout: 10000 // Aumentar timeout para redes móveis
+                    body: JSON.stringify({ username, password })
                 });
 
                 const data = await response.json();
                 console.log('📥 Resposta do login:', data);
 
-                if (!response.ok) {
+                if (!response.ok || !data.success) {
                     throw new Error(data.message || 'Erro na autenticação');
                 }
 
-                if (!data.success || !data.user) {
+                if (!data.user || !data.user.token) {
                     throw new Error('Resposta inválida do servidor');
                 }
 
-                localStorage.setItem('userToken', data.user.token);
-                return { user: data.user };
+                // Garantir que o token seja incluído
+                const user = {
+                    id: data.user.id,
+                    username: data.user.username,
+                    token: data.user.token
+                };
+
+                return { user };
             }
 
             // Verificar existência
@@ -267,13 +275,14 @@ export class Database {
     }
 
     getHeaders() {
+        const stateManager = StateManager.getInstance();
+        const user = stateManager.getUser();
         const headers = {
             'Content-Type': 'application/json',
             'Accept': 'application/json'
         };
-        const token = localStorage.getItem('userToken');
-        if (token) {
-            headers['Authorization'] = `Bearer ${token}`;
+        if (user.token) {
+            headers['Authorization'] = `Bearer ${user.token}`;
         }
         return headers;
     }
@@ -355,11 +364,10 @@ export class Database {
         }
 
         try {
-            // Deletar personagem diretamente
             const result = await this.query(`characters/${character.id}`, {
                 method: 'DELETE',
                 headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('userToken')}`,
+                    'Authorization': `Bearer ${this.stateManager.getUser().token}`,
                     'Content-Type': 'application/json'
                 }
             });
@@ -397,32 +405,15 @@ export class Database {
     }
 
     getCurrentUser() {
-        try {
-            const userData = localStorage.getItem('currentUser');
-            if (userData) {
-                const user = JSON.parse(userData);
-                console.log('Dados do usuário recuperados do localStorage:', user);
-                return user;
-            }
-            console.log('Nenhum dado de usuário encontrado no localStorage');
-            return null;
-        } catch (error) {
-            console.error('Erro ao recuperar dados do usuário:', error);
-            return null;
-        }
+        return this.stateManager.getUser();
     }
 
     setCurrentUser(user) {
-        try {
-            console.log('Salvando dados do usuário:', user);
-            localStorage.setItem('currentUser', JSON.stringify(user));
-        } catch (error) {
-            console.error('Erro ao salvar dados do usuário:', error);
-        }
+        this.stateManager.setUser(user);
     }
 
     clearCurrentUser() {
-        localStorage.removeItem('currentUser');
+        this.stateManager.clearState();
     }
 
     async verifyUserCredentials(username, password) {
@@ -433,12 +424,14 @@ export class Database {
             };
 
             const user = await this.query('login', options);
-
             if (user.error) {
                 return { valid: false };
             }
 
-            localStorage.setItem('userToken', `temp_token_${user.id}`);
+            StateManager.getInstance().setUser({
+                ...user,
+                token: `temp_token_${user.id}`
+            });
 
             return {
                 valid: true,

@@ -43,8 +43,8 @@ export class CameraController extends BaseCameraController {
             this.controls.dampingFactor = 0.05;
             this.controls.minDistance = 3;
             this.controls.maxDistance = 8;
-            this.controls.minPolarAngle = Math.PI / 4;
-            this.controls.maxPolarAngle = Math.PI / 2;
+            this.controls.minPolarAngle = Math.PI / 8;
+            this.controls.maxPolarAngle = Math.PI / 1.5;
             this.controls.enablePan = false;
             this.controls.enabled = !this.cinematicMode;
 

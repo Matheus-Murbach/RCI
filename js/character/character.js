@@ -1,5 +1,6 @@
 import { THREE } from '../core/three.js';
 import { MaterialSystem } from '../core/materialSystem.js';
+import { StateManager } from '../core/stateManager.js';
 
 // Constantes globais para criação de personagem
 export const CHARACTER_CONFIG = {
@@ -51,6 +52,7 @@ export class Character {
         this.faceExpression = data.faceExpression;
         this.equipment = data.equipment;
         
+        this.stateManager = StateManager.getInstance();
         this.materialSystem = MaterialSystem.getInstance();
         this.character3D = null;
         
@@ -185,7 +187,7 @@ export class Character {
             console.warn('⚠️ Modelo inválido para atualização');
             return;
         }
-
+        
         const body = model.children[0];
         const head = model.children[1];
 
@@ -233,7 +235,8 @@ export class Character {
 
     // Método para salvar o personagem
     save() {
-        const characters = loadCharacters();
+        const currentCharacter = this.stateManager.getCurrentCharacter();
+        const characters = this.stateManager.getCharacters();
         const existingIndex = characters.findIndex(c => c.name === this.name);
         
         if (existingIndex >= 0) {
@@ -242,7 +245,10 @@ export class Character {
             characters.push(this);
         }
         
-        localStorage.setItem('characters', JSON.stringify(characters));
+        this.stateManager.setCharacters(characters);
+        if (currentCharacter?.name === this.name) {
+            this.stateManager.setCurrentCharacter(this);
+        }
     }
 
     update(data) {
@@ -260,6 +266,11 @@ export class Character {
         }
     }
 
+    // Atualizar método de carregamento de personagens
+    static loadCharacters() {
+        return StateManager.getInstance().getCharacters();
+    }
+
 }
 
 export class Item {
@@ -267,13 +278,4 @@ export class Item {
         this.name = name;
         this.slot = slot; // 'head', 'leftHand', 'rightHand', 'back'
     }
-}
-
-// Funções de utilidade compartilhadas
-function loadCharacters() {
-    const saved = localStorage.getItem('characters');
-    if (saved) {
-        gameState.characters = JSON.parse(saved);
-    }
-    return gameState.characters;
 }

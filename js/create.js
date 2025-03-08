@@ -5,9 +5,11 @@ import { Database } from './database/database.js';
 import { SpaceScene } from './map/spaceScene.js';
 import { RenderSystem } from './core/renderSystem.js';
 import { CameraController } from './cameraControllerLobby.js';
+import { StateManager } from './core/stateManager.js';
 
 class CharacterCreator {
     constructor() {
+        this.stateManager = StateManager.getInstance();
         this.db = new Database();
         this.character3D = null;
         // Criar personagem em modo de criação (usando valores padrão)
@@ -365,6 +367,7 @@ class CharacterCreator {
             const result = await this.db.saveCharacter(characterData);
 
             if (result.success) {
+                this.stateManager.setCurrentCharacter(result.character);
                 alert('Personagem salvo com sucesso!');
                 window.location.href = 'select.html';
             } else {

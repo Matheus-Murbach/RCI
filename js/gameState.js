@@ -1,42 +1,30 @@
 import { RenderSystem } from './core/renderSystem.js';
+import { StateManager } from './core/stateManager.js';
 
 export const gameState = {
-    currentCharacter: null,
-    characters: [],
+    stateManager: StateManager.getInstance(),
     renderSystem: null,
 
     loadCharacters() {
-        try {
-            const savedCharacters = localStorage.getItem('characters');
-            this.characters = savedCharacters ? JSON.parse(savedCharacters) : [];
-            return this.characters;
-        } catch (error) {
-            console.error('Erro ao carregar personagens:', error);
-            return [];
-        }
+        return this.stateManager.getCharacters();
     },
 
     saveCharacter(character) {
-        try {
-            const existingIndex = this.characters.findIndex(c => c.name === character.name);
-            
-            if (existingIndex >= 0) {
-                this.characters[existingIndex] = character;
-            } else {
-                this.characters.push(character);
-            }
-            
-            localStorage.setItem('characters', JSON.stringify(this.characters));
-            return true;
-        } catch (error) {
-            console.error('Erro ao salvar personagem:', error);
-            return false;
+        const characters = this.stateManager.getCharacters();
+        const existingIndex = characters.findIndex(c => c.name === character.name);
+        
+        if (existingIndex >= 0) {
+            characters[existingIndex] = character;
+        } else {
+            characters.push(character);
         }
+        
+        this.stateManager.setCharacters(characters);
+        return true;
     },
 
     updateCharacterModel(character) {
-        this.currentCharacter = character;
-        // Implementação do update do modelo 3D aqui
+        this.stateManager.setCurrentCharacter(character);
     },
 
     initializeScene(canvas, container) {

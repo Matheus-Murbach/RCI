@@ -445,17 +445,16 @@ export class SpaceScene extends BaseScene {
     createPlanetGroup(data) {
         const planetGroup = new THREE.Group();
         
-        // Criar texturas com aparência não metálica
+        // Textura mais cartunista
         const texture = this.generatePlanetTexture(data.color, data.tipo);
-        const normalMap = this.generateNormalMap();
 
-        const planetMaterial = new THREE.MeshStandardMaterial({
+        // Criar gradientes para efeito toon
+        const gradientMap = this.generateToonGradient();
+
+        const planetMaterial = new THREE.MeshToonMaterial({
             map: texture,
-            normalMap: normalMap,
-            normalScale: new THREE.Vector2(1.5, 1.5), // Reduzido para efeito mais sutil
-            roughness: 1.0, // Máxima rugosidade para eliminar reflexos
-            metalness: 0.0, // Zero metalicidade
-            envMapIntensity: 0.1 // Mínima intensidade de reflexão do ambiente
+            color: data.color,
+            gradientMap: gradientMap
         });
 
         const planetGeometry = new THREE.SphereGeometry(data.radius, 32, 32);
@@ -533,7 +532,7 @@ export class SpaceScene extends BaseScene {
             for (let i = 0; i < 8; i++) {
                 const spikeGeometry = new THREE.ConeGeometry(data.radius * 0.2, data.radius * 0.5, 4);
                 const spikeMaterial = new THREE.MeshPhongMaterial({
-                    color: data.color,
+                    color: new THREE.Color(data.color).multiplyScalar(1.2),
                     shininess: 100
                 });
                 const spike = new THREE.Mesh(spikeGeometry, spikeMaterial);
@@ -589,6 +588,28 @@ export class SpaceScene extends BaseScene {
         }
 
         return planetGroup;
+    }
+
+    generateToonGradient() {
+        const canvas = document.createElement('canvas');
+        canvas.width = 64;
+        canvas.height = 64;
+        const context = canvas.getContext('2d');
+
+        const gradient = context.createLinearGradient(0, 0, 0, 64);
+        gradient.addColorStop(0.0, '#ffffff');
+        gradient.addColorStop(0.33, '#e0e0e0');
+        gradient.addColorStop(0.67, '#888888');
+        gradient.addColorStop(1.0, '#444444');
+
+        context.fillStyle = gradient;
+        context.fillRect(0, 0, 64, 64);
+
+        const gradientMap = new THREE.CanvasTexture(canvas);
+        gradientMap.minFilter = THREE.NearestFilter;
+        gradientMap.magFilter = THREE.NearestFilter;
+
+        return gradientMap;
     }
 
     updatePlanetPosition(planetGroup) {
@@ -828,77 +849,62 @@ export class SpaceScene extends BaseScene {
         const hsl = {};
         color.getHSL(hsl);
 
-        // Ajustar saturação e luminosidade para tons mais terrosos/rochosos
+        // Cores mais vibrantes
         const baseColors = Array(5).fill().map((_, i) => {
             return new THREE.Color().setHSL(
-                hsl.h + (i - 2) * 0.02,
-                Math.max(0.3, hsl.s * 0.6), // Reduzir ainda mais a saturação
-                Math.max(0.2, Math.min(0.6, hsl.l * 0.8))  // Limitar luminosidade
+                hsl.h + (i - 2) * 0.1, // Mais variação no matiz
+                Math.min(1, hsl.s * 1.2), // Aumentar saturação
+                0.4 + (i * 0.1) // Mais variação no brilho
             ).getStyle();
         });
 
-        // Preencher com cor base mais fosca
-        ctx.fillStyle = baseColors[2];
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
+        // Preencher com padrões divertidos
         if (tipo === 'rochoso') {
-            // Adicionar mais textura granular para aparência rochosa
-            for (let i = 0; i < 200; i++) { // Aumentado número de detalhes
+            // Criar padrão de manchas coloridas
+            ctx.fillStyle = baseColors[2];
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Adicionar manchas coloridas grandes
+            for (let i = 0; i < 8; i++) {
+                ctx.globalAlpha = 0.6;
+                ctx.fillStyle = baseColors[Math.floor(Math.random() * baseColors.length)];
                 const x = Math.random() * canvas.width;
                 const y = Math.random() * canvas.height;
-                const size = 2 + Math.random() * 8; // Tamanhos menores para textura mais granular
-                
-                ctx.globalAlpha = 0.4 + Math.random() * 0.3; // Mais opacidade
+                const size = 30 + Math.random() * 50;
+                ctx.beginPath();
+                ctx.arc(x, y, size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Adicionar detalhes menores
+            for (let i = 0; i < 20; i++) {
+                ctx.globalAlpha = 0.4;
                 ctx.fillStyle = baseColors[Math.floor(Math.random() * baseColors.length)];
+                const x = Math.random() * canvas.width;
+                const y = Math.random() * canvas.height;
+                const size = 5 + Math.random() * 15;
                 ctx.beginPath();
                 ctx.arc(x, y, size, 0, Math.PI * 2);
                 ctx.fill();
             }
         } else {
-            // Padrão para planetas gasosos - mais suave
-            const gradient = ctx.createLinearGradient(0, 0, canvas.width, 0);
-            
-            // Adicionar mais paradas no gradiente para transições mais suaves
+            // Planetas gasosos com padrões em listras
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
             baseColors.forEach((color, i) => {
                 gradient.addColorStop(i / (baseColors.length - 1), color);
-                // Adicionar paradas intermediárias para suavizar
-                if (i < baseColors.length - 1) {
-                    gradient.addColorStop((i + 0.5) / (baseColors.length - 1), 
-                        new THREE.Color(color).lerp(
-                            new THREE.Color(baseColors[i + 1]), 
-                            0.5
-                        ).getStyle()
-                    );
-                }
             });
             
             ctx.fillStyle = gradient;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Adicionar textura sutil para quebrar o brilho
-            ctx.globalCompositeOperation = 'multiply';
-            for (let i = 0; i < 50; i++) {
-                ctx.globalAlpha = 0.1;
-                ctx.fillStyle = '#000000';
-                const x = Math.random() * canvas.width;
-                const y = Math.random() * canvas.height;
-                const size = 20 + Math.random() * 40;
-                ctx.beginPath();
-                ctx.arc(x, y, size, 0, Math.PI * 2);
-                ctx.fill();
-            }
-
-            // Adicionar nuvens suaves
-            ctx.globalCompositeOperation = 'soft-light'; // Mudado para soft-light
-            for (let i = 0; i < 30; i++) {
-                ctx.globalAlpha = 0.15;
-                ctx.fillStyle = '#ffffff';
-                const x = Math.random() * canvas.width;
-                const y = Math.random() * canvas.height;
-                const size = 30 + Math.random() * 60;
-                ctx.beginPath();
-                ctx.arc(x, y, size, 0, Math.PI * 2);
-                ctx.fill();
+            // Adicionar listras onduladas
+            for (let i = 0; i < 5; i++) {
+                ctx.globalAlpha = 0.3;
+                ctx.fillStyle = baseColors[Math.floor(Math.random() * baseColors.length)];
+                for (let y = 0; y < canvas.height; y += 2) {
+                    const offset = Math.sin((y + i * 30) * 0.1) * 20;
+                    ctx.fillRect(offset, y, canvas.width, 2);
+                }
             }
         }
 
@@ -911,34 +917,16 @@ export class SpaceScene extends BaseScene {
     }
 
     generateNormalMap() {
+        // Simplificar o mapa normal para um visual mais cartunista
         const canvas = document.createElement('canvas');
         canvas.width = 256;
         canvas.height = 256;
         const ctx = canvas.getContext('2d');
-
-        // Criar padrão de normal map mais eficiente
-        const imageData = ctx.createImageData(canvas.width, canvas.height);
-        const data = imageData.data;
-
-        // Usar um padrão de Perlin Noise simplificado
-        for (let i = 0; i < data.length; i += 4) {
-            const x = (i / 4) % canvas.width;
-            const y = Math.floor((i / 4) / canvas.width);
-            
-            const noise = Math.sin(x * 0.1) * Math.cos(y * 0.1) * 0.5 + 0.5;
-            
-            data[i] = 128 + noise * 127;     // R
-            data[i + 1] = 128 + noise * 127; // G
-            data[i + 2] = 255;               // B
-            data[i + 3] = 255;               // A
-        }
-
-        ctx.putImageData(imageData, 0, 0);
-
-        const texture = new THREE.CanvasTexture(canvas);
-        texture.wrapS = THREE.RepeatWrapping;
-        texture.wrapT = THREE.RepeatWrapping;
         
+        ctx.fillStyle = '#808080';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        const texture = new THREE.CanvasTexture(canvas);
         return texture;
     }
 

@@ -2,9 +2,11 @@ import { THREE, OrbitControls } from './core/three.js';
 import { PlainScene } from './map/plainScene.js';
 import { CameraController } from './cameraControllerLobby.js';
 import { Character } from './character/character.js';
+import { StateManager } from './core/stateManager.js';
 
 class Game {
     constructor() {
+        this.stateManager = StateManager.getInstance();
         this.scene = null;
         this.camera = null;
         this.renderer = null;
@@ -25,30 +27,19 @@ class Game {
             
             console.log('🎮 Iniciando jogo...');
             
-            // Verificar e carregar dados do personagem
-            const savedCharacter = localStorage.getItem('selectedCharacter');
-            if (!savedCharacter) {
-                throw new Error('Nenhum personagem selecionado');
+            // Verificar personagem selecionado
+            const currentCharacter = this.stateManager.getCurrentCharacter();
+            console.log('🎮 Personagem atual:', currentCharacter);
+
+            if (!currentCharacter || !currentCharacter.id) {
+                console.error('❌ Nenhum personagem válido selecionado');
+                // Redirecionar para seleção em vez de lançar erro
+                window.location.href = 'select.html';
+                return;
             }
             
-            const characterData = JSON.parse(savedCharacter);
-            console.log('📝 Dados do personagem:', characterData);
-            
-            // Corrigir o mapeamento dos dados do personagem
-            this.character = new Character({
-                id: characterData.id,
-                name: characterData.name,
-                mainColor: characterData.mainColor || characterData.main_color,
-                skinColor: characterData.skinColor || characterData.skin_color,
-                accentColor: characterData.accentColor || characterData.accent_color,
-                topRadius: characterData.topRadius || characterData.top_radius,
-                bottomRadius: characterData.bottomRadius || characterData.bottom_radius,
-                faceExpression: characterData.faceExpression || characterData.face_expression,
-                userId: characterData.userId || characterData.user_id,
-                equipment: characterData.equipment || {}
-            });
-            
-            console.log('✅ Personagem criado:', this.character);
+            this.character = new Character(currentCharacter);
+            console.log('✅ Personagem carregado:', this.character.name);
             
             // Inicializar Three.js primeiro
             await this.initThree();
@@ -76,7 +67,9 @@ class Game {
             
         } catch (error) {
             console.error('❌ Erro fatal:', error);
-            throw error; // Propagar erro para tratamento global
+            setTimeout(() => {
+                window.location.href = 'select.html';
+            }, 2000);
         }
     }
 

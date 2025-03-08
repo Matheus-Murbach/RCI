@@ -1,7 +1,9 @@
 import { authGuard } from './auth/authGuard.js';
+import { StateManager } from './core/stateManager.js';
 
 class LoginManager {
     constructor() {
+        this.stateManager = StateManager.getInstance();
         this.initializeElements();
         this.addEventListeners();
         this.setupNotificationContainer();
@@ -100,6 +102,7 @@ class LoginManager {
 
     async handleLogin(e) {
         e.preventDefault();
+        let submitButton;
         
         try {
             const username = this.usernameInput.value.trim();
@@ -110,17 +113,22 @@ class LoginManager {
                 return;
             }
 
-            const submitButton = this.loginForm.querySelector('button[type="submit"]');
+            submitButton = this.loginForm.querySelector('button[type="submit"]');
             submitButton.disabled = true;
             
             const result = await authGuard.login(username, password);
             console.log('Resultado do login:', result);
             
             if (result.success) {
-                this.showSuccess(result.message);
+                this.showSuccess('Login realizado com sucesso!');
+                console.log('Estado após login:', {
+                    user: this.stateManager.getUser(),
+                    isActive: authGuard.isUserActive()
+                });
+                
                 setTimeout(() => {
-                    const redirectUrl = localStorage.getItem('redirectAfterLogin') || '/pages/select.html';
-                    localStorage.removeItem('redirectAfterLogin');
+                    const redirectUrl = this.stateManager.getRedirectUrl() || '/pages/select.html';
+                    this.stateManager.setRedirectUrl(null);
                     window.location.replace(redirectUrl);
                 }, 1000);
             } else {
@@ -130,8 +138,9 @@ class LoginManager {
             console.error('Erro no login:', error);
             this.showError('Erro ao tentar fazer login');
         } finally {
-            const submitButton = this.loginForm.querySelector('button[type="submit"]');
-            if (submitButton) submitButton.disabled = false;
+            if (submitButton) {
+                submitButton.disabled = false;
+            }
         }
     }
 
@@ -354,8 +363,8 @@ class LoginManager {
 
     async handleLoginSuccess(result) {
         if (result.success) {
-            const redirectUrl = localStorage.getItem('redirectAfterLogin');
-            localStorage.removeItem('redirectAfterLogin');
+            const redirectUrl = this.stateManager.getRedirectUrl();
+            this.stateManager.setRedirectUrl(null);
             window.location.href = redirectUrl || '/pages/select.html';
             return true;
         }

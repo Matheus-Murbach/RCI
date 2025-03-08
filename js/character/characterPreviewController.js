@@ -1,6 +1,7 @@
 import { RenderSystem } from '../core/renderSystem.js';
 import { SpaceScene } from '../map/spaceScene.js';
 import { CameraController } from '../cameraControllerLobby.js';
+import { Character } from './character.js';
 
 export class CharacterPreviewController {
     constructor(canvas, container) {
@@ -70,9 +71,9 @@ export class CharacterPreviewController {
         }
     }
 
-    updateCharacter(character) {
-        if (!character) return;
-        console.log('🔄 Atualizando preview do personagem:', character.name);
+    updateCharacter(characterData) {
+        if (!characterData) return;
+        console.log('🔄 Atualizando preview do personagem:', characterData.name);
 
         // Remover modelo anterior se existir
         if (this.characterModel) {
@@ -84,6 +85,9 @@ export class CharacterPreviewController {
         }
 
         try {
+            // Criar nova instância do Character com os dados recebidos
+            const character = new Character(characterData);
+            
             // Criar novo modelo 3D
             this.characterModel = character.create3DModel();
             

@@ -2,10 +2,12 @@ import { Database } from './database/database.js';
 import { authGuard } from './auth/authGuard.js';
 import { Character } from './character/character.js';
 import { CharacterPreviewController } from './character/characterPreviewController.js';
+import { StateManager } from './core/stateManager.js';
 
 class CharacterSelector {
     constructor() {
         this.db = new Database();
+        this.stateManager = StateManager.getInstance();
         this.selectedCharacter = null;
         this.characters = [];
         this.previewController = null;
@@ -50,7 +52,7 @@ class CharacterSelector {
         const authStatus = {
             isActive: authGuard.isUserActive(),
             userId: authGuard.getActiveUserId(),
-            token: !!localStorage.getItem('userToken')
+            token: !!this.stateManager.getUser().token
         };
 
         console.log('🔐 Status da autenticação:', authStatus);
@@ -66,28 +68,19 @@ class CharacterSelector {
 
     async loadAndDisplayCharacters() {
         const userId = authGuard.getActiveUserId();
-        console.log('👤 Carregando personagens para usuário:', userId);
-
-        let retryCount = 0;
-        const maxRetries = 3;
-
-        while (retryCount < maxRetries) {
-            try {
-                const characters = await this.db.getCharactersByUserId(userId);
-                this.processCharacters(characters);
-                return;
-            } catch (error) {
-                console.error(`❌ Tentativa ${retryCount + 1}/${maxRetries} falhou:`, error);
-                retryCount++;
-                
-                if (retryCount === maxRetries) {
-                    this.handleError(error);
-                    return;
-                }
-                
-                // Esperar antes de tentar novamente
-                await new Promise(r => setTimeout(r, 1000 * retryCount));
+        try {
+            const characters = await this.db.getCharactersByUserId(userId);
+            this.stateManager.setCharacters(characters);
+            this.characters = characters;
+            this.displayCharacters();
+            
+            // Selecionar primeiro personagem automaticamente se houver
+            if (characters.length > 0) {
+                this.selectCharacter(characters[0]);
             }
+        } catch (error) {
+            console.error('Erro ao carregar personagens:', error);
+            this.handleError(error);
         }
     }
 
@@ -168,23 +161,25 @@ class CharacterSelector {
     }
 
     selectCharacter(character) {
-        console.log('🎮 Selecionando personagem:', character.name);
         this.selectedCharacter = character;
+        this.stateManager.setCurrentCharacter(character);
         
-        // Atualizar seleção visual
+        // Atualizar UI
         document.querySelectorAll('.character-option').forEach(el => 
             el.classList.toggle('selected', el.querySelector('h3').textContent === character.name)
         );
 
-        // Garantir que o preview seja atualizado
         if (this.previewController) {
-            console.log('🎨 Atualizando preview para:', character.name);
             this.previewController.updateCharacter(character);
-        } else {
-            console.warn('⚠️ PreviewController não encontrado');
         }
 
-        document.getElementById('playButton').disabled = false;
+        // Habilitar botão de play
+        const playButton = document.getElementById('playButton');
+        if (playButton) {
+            playButton.disabled = false;
+        }
+
+        console.log('🎮 Personagem selecionado:', character.name);
     }
 
     setupEventListeners() {
@@ -205,12 +200,11 @@ class CharacterSelector {
 
         // Botão de jogar
         document.getElementById('playButton').addEventListener('click', () => {
-            if (this.selectedCharacter && authGuard.isUserActive()) {
-                // Salvar o personagem selecionado no localStorage
-                localStorage.setItem('selectedCharacter', JSON.stringify(this.selectedCharacter));
-                // Usar novo padrão camelCase
-                localStorage.removeItem('redirectAfterLogin');
+            const currentCharacter = this.stateManager.getCurrentCharacter();
+            if (currentCharacter && authGuard.isUserActive()) {
                 window.location.href = 'game.html';
+            } else {
+                console.error('❌ Nenhum personagem selecionado ou usuário não autenticado');
             }
         });
 
@@ -274,8 +268,7 @@ class CharacterSelector {
     handleError(error) {
         console.error('Erro:', error);
         setTimeout(() => {
-            // Garantir limpeza de todos os dados antes do logout
-            localStorage.removeItem('redirectAfterLogin');
+            this.stateManager.setRedirectUrl(null);
             authGuard.logout();
         }, 3000);
     }
@@ -283,12 +276,9 @@ class CharacterSelector {
 
 // Inicialização
 document.addEventListener('DOMContentLoaded', () => {
+    const stateManager = StateManager.getInstance();
     const initialState = {
-        localStorage: {
-            activeUserId: localStorage.getItem('activeUserId'),
-            userToken: !!localStorage.getItem('userToken'),
-            currentUser: localStorage.getItem('currentUser')
-        },
+        user: stateManager.getUser(),
         url: window.location.href
     };
     
