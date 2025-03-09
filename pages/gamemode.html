@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RCI Tabletop - Selecionar Modo</title>
+    <link rel="icon" type="image/x-icon" href="../pages/dado.ico">
+    <link rel="stylesheet" href="../css/styles.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+</head>
+<body>
+    <div class="screen">
+        <div class="gamemode-section">
+            <h2>Selecione o Modo de Jogo</h2>
+            
+            <div class="gamemode-options">
+                <div class="gamemode-card disabled">
+                    <span class="material-icons">lock</span>
+                    <h3>Sala Fechada</h3>
+                    <p>Em breve...</p>
+                </div>
+                
+                <div class="gamemode-card active" id="freePlayMode">
+                    <span class="material-icons">explore</span>
+                    <h3>Modo Livre</h3>
+                    <p>Exploração com geração aleatória</p>
+                </div>
+            </div>
+
+            <div class="buttons-group">
+                <button id="backButton" class="btn-secondary">
+                    <span class="material-icons">arrow_back</span>
+                    Voltar
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <script type="module" src="../js/gamemode.js"></script>
+</body>
+</html>

@@ -2,40 +2,26 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <link rel="icon" type="image/x-icon" href="../pages/dado.ico">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RCI - Jogo</title>
-    <style>
-        body { margin: 0; }
-        canvas { width: 100vw; height: 100vh; display: block; }
-        #backButton {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            padding: 10px 20px;
-            background-color: #333;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            z-index: 1000;
-        }
-        #backButton:hover {
-            background-color: #555;
-        }
-    </style>
+    <title>RCI Tabletop - Jogo</title>
+    <link rel="icon" type="image/x-icon" href="../pages/dado.ico">
+    <link rel="stylesheet" href="../css/styles.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 </head>
 <body>
-    <canvas id="gameCanvas"></canvas>
-    <button id="backButton">Voltar para Seleção</button>
-    <script type="importmap">
-        {
-            "imports": {
-                "three": "https://unpkg.com/three@0.157.0/build/three.module.js",
-                "three/addons/": "https://unpkg.com/three@0.157.0/examples/jsm/"
-            }
-        }
-    </script>
+    <div class="screen">
+        <div class="game-container">
+            <div id="gameArea">
+                <pre id="mapDisplay"></pre>
+            </div>
+        </div>
+        
+        <button id="backButton" class="btn-secondary">
+            <span class="material-icons">arrow_back</span>
+            Voltar
+        </button>
+    </div>
+
     <script type="module" src="../js/game.js"></script>
 </body>
 </html>

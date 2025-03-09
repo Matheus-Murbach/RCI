@@ -32,6 +32,8 @@ export class StateManager {
 
         // Tentar restaurar estado da sessão
         this.loadState();
+
+        this.gameMode = null;
     }
 
     initialize() {
@@ -78,6 +80,10 @@ export class StateManager {
         return this.state.redirectUrl;
     }
 
+    getGameMode() {
+        return this.gameMode || localStorage.getItem('gameMode');
+    }
+
     // Setters com notificação de mudanças
     setUser(userData) {
         this.state.user = userData;
@@ -107,6 +113,13 @@ export class StateManager {
     setRedirectUrl(url) {
         this.state.redirectUrl = url;
         this.notifyListeners('redirectUrl');
+    }
+
+    setGameMode(mode) {
+        console.log('🎮 Definindo modo de jogo:', mode);
+        this.gameMode = mode;
+        // Opcionalmente salvar no localStorage
+        localStorage.setItem('gameMode', mode);
     }
 
     // Sistema de observadores

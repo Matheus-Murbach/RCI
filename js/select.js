@@ -202,7 +202,7 @@ class CharacterSelector {
         document.getElementById('playButton').addEventListener('click', () => {
             const currentCharacter = this.stateManager.getCurrentCharacter();
             if (currentCharacter && authGuard.isUserActive()) {
-                window.location.href = 'game.html';
+                window.location.href = 'gamemode.html'; // Alterado de game.html para gamemode.html
             } else {
                 console.error('❌ Nenhum personagem selecionado ou usuário não autenticado');
             }

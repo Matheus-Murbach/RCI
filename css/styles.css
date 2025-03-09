@@ -1298,3 +1298,84 @@ canvas {
         overflow-x: hidden;
     }
 }
+
+/* Estilos para seleção de modo de jogo */
+.gamemode-section {
+    width: 100%;
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 2rem;
+    text-align: center;
+}
+
+.gamemode-options {
+    display: flex;
+    gap: 2rem;
+    justify-content: center;
+    margin: 2rem 0;
+}
+
+.gamemode-card {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 2rem;
+    width: 250px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.gamemode-card:hover:not(.disabled) {
+    transform: translateY(-5px);
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.gamemode-card.active {
+    border: 2px solid var(--color-rci-Azul1);
+}
+
+.gamemode-card.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.gamemode-card .material-icons {
+    font-size: 48px;
+    margin-bottom: 1rem;
+    color: var(--color-rci-Azul1);
+}
+
+.gamemode-card h3 {
+    margin-bottom: 0.5rem;
+    color: var(--color-rci-Azul1);
+}
+
+.gamemode-card p {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.9rem;
+}
+
+/* Estilos para área do jogo */
+.game-container {
+    width: 100%;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    overflow: auto;
+}
+
+#gameArea {
+    background: rgba(0, 0, 0, 0.5);
+    padding: 20px;
+    border-radius: 8px;
+    overflow: auto;
+}
+
+#mapDisplay {
+    font-family: monospace;
+    white-space: pre;
+    color: white;
+    font-size: 14px;
+    line-height: 1.2;
+}

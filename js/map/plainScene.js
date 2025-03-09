@@ -11,6 +11,7 @@ export class PlainScene extends BaseScene {
         this.lightSystem = LightSystem.getInstance();
         this.cameraController = new CameraControllerGame(camera);
         this.characterModel = null;
+        this.character = null;
         this.init();
     }
 
@@ -30,6 +31,7 @@ export class PlainScene extends BaseScene {
         this.createTerrain();
         this.createSkybox();
         this.createAmbientElements();
+        this.setupScene();
     }
 
     createTerrain() {
@@ -170,10 +172,38 @@ export class PlainScene extends BaseScene {
         return group;
     }
 
+    setupScene() {
+        // Adicionar luz ambiente
+        const ambientLight = new THREE.AmbientLight(0x404040, 1);
+        this.scene.add(ambientLight);
+
+        // Adicionar luz direcional
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+        directionalLight.position.set(5, 5, 5);
+        this.scene.add(directionalLight);
+
+        // Adicionar plano do chão
+        const groundGeometry = new THREE.PlaneGeometry(100, 100);
+        const groundMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0x333333,
+            roughness: 0.8,
+            metalness: 0.2
+        });
+        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+        ground.rotation.x = -Math.PI / 2;
+        ground.receiveShadow = true;
+        this.scene.add(ground);
+    }
+
     update() {
         // Atualizar posição da câmera baseada no personagem
         if (this.characterModel) {
             this.cameraController.update(this.characterModel.position);
+        }
+        // Atualizar posição da câmera baseada no personagem
+        if (this.character && this.character.character3D) {
+            const position = this.character.character3D.position;
+            this.camera.lookAt(position);
         }
     }
 
@@ -196,6 +226,13 @@ export class PlainScene extends BaseScene {
         } catch (error) {
             console.error('Erro ao atualizar modelo do personagem:', error);
             throw error;
+        }
+        if (this.character) {
+            this.scene.remove(this.character);
+        }
+        this.character = character;
+        if (character.character3D) {
+            this.scene.add(character.character3D);
         }
     }
 }
