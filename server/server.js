@@ -142,40 +142,11 @@ const handleSqlError = (res, err, operation = 'unknown') => {
     }
 };
 
-// Função para iniciar o ngrok
-async function startNgrok() {
-    try {
-        const ngrok = require('ngrok');
-        const url = await ngrok.connect({
-            addr: PORT,
-            authtoken: '2tyRAoYN5dkrmYaBvI5Zb1T2pad_4StAqt45P9nLZW83U164Z'
-        });
-        console.log('Túnel ngrok disponível em:', url);
-        return url;
-    } catch (err) {
-        console.error('Erro ao iniciar ngrok (não crítico):', err.message);
-        return null;
-    }
-}
-
 // Iniciar servidor
 async function startServer() {
     // Iniciar servidor express
     app.listen(PORT, async () => {
         console.log(`Servidor local rodando em http://localhost:${PORT}`);
-        
-        // Tentar iniciar ngrok
-        try {
-            const ngrokUrl = await startNgrok();
-            if (ngrokUrl) {
-                app.locals.ngrokUrl = ngrokUrl;
-                app.get('/api/server-url', (req, res) => {
-                    res.json({ url: app.locals.ngrokUrl });
-                });
-            }
-        } catch (error) {
-            console.log('Servidor rodando apenas localmente');
-        }
     });
 }
 
@@ -641,28 +612,16 @@ app.post('/api/users', async (req, res) => {
 startServer();
 
 // Tratamento de encerramento mais robusto
-process.on('SIGTERM', async () => {
+process.on('SIGTERM', () => {
     console.log('Encerrando servidor...');
     db?.close();
     dbChar?.close();
-    try {
-        const ngrok = require('ngrok');
-        await ngrok.kill();
-    } catch (error) {
-        console.log('Ngrok já encerrado ou não iniciado');
-    }
     process.exit(0);
 });
 
-process.on('SIGINT', async () => {
+process.on('SIGINT', () => {
     console.log('Encerrando servidor...');
     db?.close();
     dbChar?.close();
-    try {
-        const ngrok = require('ngrok');
-        await ngrok.kill();
-    } catch (error) {
-        console.log('Ngrok já encerrado ou não iniciado');
-    }
     process.exit(0);
 });

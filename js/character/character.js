@@ -35,28 +35,45 @@ export class Character {
     constructor(data = {}, isCreationMode = false) {
         console.log('🎭 Modo:', isCreationMode ? 'Criação' : 'Carregamento');
         console.log('📥 Dados recebidos:', data);
-        console.log('🎭 [CHARACTER] Construindo personagem, dados recebidos:', 
-            data.faceExpression);
-        
-        // ADICIONAR ESTE LOG
-        console.log('🔍 faceExpression recebido:', data.faceExpression);
 
+        // Garantir valores padrão caso não existam
+        const defaults = CHARACTER_CONFIG.defaults;
         this.id = data.id;
         this.userId = data.userId;
         this.name = data.name;
-        this.mainColor = data.mainColor;
-        this.skinColor = data.skinColor;
-        this.accentColor = data.accentColor;
-        this.topRadius = data.topRadius;
-        this.bottomRadius = data.bottomRadius;
-        this.faceExpression = data.faceExpression;
-        this.equipment = data.equipment;
+        this.mainColor = data.mainColor || defaults.mainColor;
+        this.skinColor = data.skinColor || defaults.skinColor;
+        this.accentColor = data.accentColor || defaults.accentColor;
+        this.topRadius = data.topRadius || defaults.topRadius;
+        this.bottomRadius = data.bottomRadius || defaults.bottomRadius;
+        this.faceExpression = data.faceExpression || defaults.faceExpression;
+        this.equipment = data.equipment || { ...defaults.equipment };
         
         this.stateManager = StateManager.getInstance();
         this.materialSystem = MaterialSystem.getInstance();
         this.character3D = null;
-        
+
         console.log('✨ Personagem construído:', this);
+    }
+
+    isValid() {
+        const hasRequired = this.id && this.name;
+        const hasValidFace = this.faceExpression && typeof this.faceExpression === 'string';
+        const hasValidColors = this.mainColor && this.skinColor && this.accentColor;
+        const hasValidDimensions = typeof this.topRadius === 'number' && 
+                                 typeof this.bottomRadius === 'number';
+
+        const isValid = hasRequired && hasValidFace && hasValidColors && hasValidDimensions;
+
+        console.log('🔍 Validação do personagem:', {
+            hasRequired,
+            hasValidFace,
+            hasValidColors,
+            hasValidDimensions,
+            isValid
+        });
+
+        return isValid;
     }
 
     processInputData(data, defaults, isCreationMode) {

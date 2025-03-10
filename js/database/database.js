@@ -14,24 +14,6 @@ export class Database {
         try {
             console.log('🔄 Iniciando conexão com servidor...');
             
-            // Primeiro tentar URL do ngrok
-            try {
-                const response = await fetch('http://localhost:3000/api/server-url', {
-                    timeout: 5000,
-                    headers: {
-                        'Accept': 'application/json'
-                    }
-                });
-                const data = await response.json();
-                if (data.url) {
-                    this.apiUrl = data.url;
-                    console.log('✅ Usando URL Ngrok:', this.apiUrl);
-                    return true;
-                }
-            } catch (e) {
-                console.warn('⚠️ Ngrok não disponível, tentando conexões alternativas');
-            }
-
             // URLs de fallback
             const fallbackUrls = [
                 'http://localhost:3000',
@@ -41,27 +23,27 @@ export class Database {
             for (const url of fallbackUrls) {
                 try {
                     console.log(`Testando conexão com: ${url}`);
-                    // ADICIONAR ESTE LOG
-                    console.log('🔍 Tentando conectar em:', url);
                     const response = await fetch(`${url}/api/health`, {
                         timeout: 5000,
                         headers: {
                             'Accept': 'application/json'
                         }
                     });
-                    const data = await response.json();
-                    if (data.status === 'ok') {
+                    
+                    if (response.ok) {
                         this.apiUrl = url;
-                        console.log('✅ Conectado ao servidor:', url);
+                        console.log('✅ Conexão estabelecida com:', this.apiUrl);
                         return true;
                     }
                 } catch (e) {
-                    console.warn(`❌ Falha ao conectar em ${url}:`, e.message);
+                    console.warn(`⚠️ Não foi possível conectar a ${url}:`, e.message);
                 }
             }
-            throw new Error('Nenhum servidor disponível');
+            
+            throw new Error('Não foi possível estabelecer conexão com o servidor');
+            
         } catch (error) {
-            console.error('❌ Erro de conexão:', error);
+            console.error('❌ Erro ao inicializar URL da API:', error);
             throw error;
         }
     }
@@ -127,7 +109,6 @@ export class Database {
                 'Authorization': `Bearer ${this.stateManager.getUser().token}`
             };
             
-            // Remover header problemático do ngrok
             const response = await fetch(`${this.apiUrl}/api/${endpoint}`, {
                 ...options,
                 headers: {
@@ -137,16 +118,6 @@ export class Database {
                 redirect: 'follow'
             });
             
-            // Verificar se a resposta é HTML
-            const contentType = response.headers.get('content-type');
-            if (contentType && contentType.includes('text/html')) {
-                // Tentar reconectar usando uma nova URL do ngrok
-                console.warn('⚠️ Recebido HTML do ngrok, tentando reconectar...');
-                await this.initializeApiUrl();
-                // Tentar novamente com a nova URL
-                return this.query(endpoint, options);
-            }
-
             const responseText = await response.text();
             let responseData;
             
@@ -154,9 +125,6 @@ export class Database {
                 responseData = JSON.parse(responseText);
                 console.log('📥 Resposta parseada:', responseData);
             } catch (parseError) {
-                if (responseText.includes('ngrok')) {
-                    throw new Error('Erro de conexão com ngrok - reconectando...');
-                }
                 console.error('❌ Erro ao processar resposta:', responseText);
                 throw new Error('Resposta inválida do servidor');
             }
@@ -167,7 +135,6 @@ export class Database {
 
             console.groupEnd();
             return responseData;
-
         } catch (error) {
             console.error('❌ Erro na query:', error);
             console.groupEnd();

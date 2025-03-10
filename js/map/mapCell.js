@@ -13,10 +13,10 @@ export class MapCell {
     get symbol() {
         switch(this.type) {
             case 'empty': return ' . ';
-            case 'room': 
-            case 'hub': return '[X]';
-            case 'hall': return '[~]';
-            case 'altHall': return '[/]';
+            case 'room': return '[X]';
+            case 'hub': return '[H]';
+            case 'hall': return '[(]';
+            case 'altHall': return '[)]';
             default: return ' ? ';
         }
     }

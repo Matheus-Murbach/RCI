@@ -72,7 +72,41 @@ export class StateManager {
         return this.state.currentCharacter;
     }
 
+    hasCurrentCharacter() {
+        try {
+            const char = this.state.currentCharacter;
+            const hasCharacter = char !== null && 
+                               typeof char === 'object' &&
+                               char.hasOwnProperty('id') &&
+                               char.hasOwnProperty('name');
+            
+            console.log('🔍 Verificação de personagem:', {
+                exists: !!char,
+                isValid: hasCharacter,
+                character: char
+            });
+            
+            return hasCharacter;
+            
+        } catch (error) {
+            console.error('❌ Erro ao verificar personagem:', error);
+            return false;
+        }
+    }
+
     getSettings() {
+        if (!this.state.settings) {
+            this.state.settings = {};
+        }
+        
+        // Carregar tema do localStorage se necessário
+        if (!this.state.settings.theme) {
+            this.state.settings.theme = localStorage.getItem('theme');
+            if (this.state.settings.theme) {
+                this.state.settings.loaded = true;
+            }
+        }
+        
         return this.state.settings;
     }
 
@@ -81,7 +115,10 @@ export class StateManager {
     }
 
     getGameMode() {
-        return this.gameMode || localStorage.getItem('gameMode');
+        if (!this.gameMode) {
+            this.gameMode = localStorage.getItem('gameMode');
+        }
+        return this.gameMode;
     }
 
     // Setters com notificação de mudanças
@@ -107,6 +144,12 @@ export class StateManager {
 
     updateSettings(settings) {
         this.state.settings = {...this.state.settings, ...settings};
+        
+        // Persistir tema
+        if (settings.theme) {
+            localStorage.setItem('theme', settings.theme);
+        }
+        
         this.notifyListeners('settings');
     }
 
@@ -118,7 +161,6 @@ export class StateManager {
     setGameMode(mode) {
         console.log('🎮 Definindo modo de jogo:', mode);
         this.gameMode = mode;
-        // Opcionalmente salvar no localStorage
         localStorage.setItem('gameMode', mode);
     }
 
@@ -148,10 +190,12 @@ export class StateManager {
     saveState() {
         const stateToSave = {
             user: this.state.user,
+            currentCharacter: this.state.currentCharacter,
             redirectUrl: this.state.redirectUrl
         };
+        
+        console.log('💾 Salvando estado:', stateToSave);
         sessionStorage.setItem('appState', JSON.stringify(stateToSave));
-        console.log('💾 Estado salvo:', stateToSave);
     }
 
     loadState() {
@@ -162,6 +206,7 @@ export class StateManager {
                 this.state = {
                     ...this.state,
                     user: parsedState.user || this.state.user,
+                    currentCharacter: parsedState.currentCharacter || null,
                     redirectUrl: parsedState.redirectUrl
                 };
                 console.log('📥 Estado restaurado:', this.state);

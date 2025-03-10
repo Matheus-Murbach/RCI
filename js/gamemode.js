@@ -4,6 +4,7 @@ import { authGuard } from './auth/authGuard.js';
 class GameModeSelector {
     constructor() {
         this.stateManager = StateManager.getInstance();
+        this.selectedMode = null;
         this.initialize();
     }
 
@@ -27,7 +28,13 @@ class GameModeSelector {
         const backButton = document.getElementById('backButton');
         if (backButton) {
             backButton.addEventListener('click', () => {
-                window.location.href = 'select.html';
+                // Se estiver na seleção de tema, voltar para seleção de modo
+                const themeSection = document.getElementById('themeSelection');
+                if (themeSection.classList.contains('visible')) {
+                    this.showModeSelection();
+                } else {
+                    window.location.href = 'select.html';
+                }
             });
             console.log('✅ Botão voltar configurado');
         }
@@ -36,19 +43,56 @@ class GameModeSelector {
         const freePlayButton = document.getElementById('freePlayMode');
         if (freePlayButton) {
             freePlayButton.addEventListener('click', () => {
-                console.log('🎲 Iniciando modo livre...');
-                this.startGame('free');
+                console.log('🎲 Selecionado modo livre');
+                this.selectedMode = 'free';
+                this.showThemeSelection();
             });
             console.log('✅ Botão modo livre configurado');
         }
+
+        // Temas
+        const scifiTheme = document.getElementById('scifiTheme');
+        if (scifiTheme) {
+            scifiTheme.addEventListener('click', () => {
+                this.startGame(this.selectedMode, 'scifi');
+            });
+        }
     }
 
-    startGame(mode) {
-        console.log(`🎮 Iniciando jogo no modo: ${mode}`);
-        // Salvar modo selecionado no state
-        this.stateManager.setGameMode(mode);
+    showThemeSelection() {
+        // Esconder seleção de modo
+        const modeOptions = document.querySelector('.gamemode-options');
+        modeOptions.style.display = 'none';
         
-        // Redirecionar para o jogo
+        // Mostrar seleção de tema
+        const themeSection = document.getElementById('themeSelection');
+        themeSection.classList.remove('hidden');
+        themeSection.classList.add('visible');
+    }
+
+    showModeSelection() {
+        // Mostrar seleção de modo
+        const modeOptions = document.querySelector('.gamemode-options');
+        modeOptions.style.display = 'grid';
+        
+        // Esconder seleção de tema
+        const themeSection = document.getElementById('themeSelection');
+        themeSection.classList.remove('visible');
+        themeSection.classList.add('hidden');
+        
+        this.selectedMode = null;
+    }
+
+    startGame(mode, theme) {
+        console.log(`🎮 Iniciando jogo no modo: ${mode}, tema: ${theme}`);
+        
+        // Atualizar apenas via StateManager
+        this.stateManager.setGameMode(mode);
+        this.stateManager.updateSettings({
+            theme: theme,
+            loaded: true
+        });
+        
         window.location.href = 'game.html';
     }
 }

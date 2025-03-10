@@ -15,7 +15,14 @@ export class BaseScene {
     }
 
     init() {
-        // Inicialização básica que todas as cenas compartilham
-        this.scene.background = new THREE.Color(0x000000);
+        // Simplificar inicialização
+        this.scene.background = new THREE.Color(0x000033);
+        this.scene.fog = new THREE.Fog(0x000033, 1, 50);
+        return true;
+    }
+
+    update() {
+        // Método base vazio que pode ser sobrescrito
+        return true;
     }
 }

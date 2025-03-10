@@ -1,238 +1,256 @@
 import { THREE } from '../core/three.js';
 import { BaseScene } from './baseScene.js';
 import { MaterialSystem } from '../core/materialSystem.js';
-import { LightSystem } from '../core/lightSystem.js';
+import { RenderSystem } from '../core/renderSystem.js';
+import { StateManager } from '../core/stateManager.js';
 import { CameraControllerGame } from '../cameraControllerGame.js';
+import { DungeonThemeManager } from './dungeonThemeManager.js';
+import { MapGenerator } from './mapGenerator.js';
 
 export class PlainScene extends BaseScene {
     constructor(scene, camera) {
         super(scene, camera);
-        this.materialSystem = MaterialSystem.getInstance();
-        this.lightSystem = LightSystem.getInstance();
-        this.cameraController = new CameraControllerGame(camera);
-        this.characterModel = null;
-        this.character = null;
-        this.init();
+        
+        // Inicializar componentes principais
+        this.camera = camera;
+        this.scene = scene;
+        this.cameraController = new CameraControllerGame(camera, scene);
+        this.mapGenerator = new MapGenerator();
+        this.themeManager = new DungeonThemeManager(scene);
+        
+        // Atualizar câmera diretamente no tema atual
+        if (this.themeManager.currentTheme) {
+            this.themeManager.currentTheme.camera = camera;
+        }
+        
+        console.log('🎥 PlainScene inicializada:', {
+            camera: !!camera,
+            scene: !!scene,
+            controller: !!this.cameraController
+        });
     }
 
-    init() {
-        // Configurar background usando RenderSystem
-        this.renderSystem.setBackground(new THREE.Color(0x000000));
-        
-        // Configurar iluminação usando LightSystem
-        this.lightSystem.setupLighting(this.scene, {
-            directional: {
-                intensity: 1.8, // Ajuste específico para a cena plana
-                position: new THREE.Vector3(10, 10, 10)
+    async init() {
+        if (!super.init()) return false;
+
+        await this.setupMapAndTheme();
+        return true;
+    }
+
+    async setupMapAndTheme() {
+        try {
+            // Gerar mapa
+            this.mapGenerator.generateMap();
+            
+            // Verificar se o mapa foi gerado com sucesso
+            if (!this.mapGenerator.grid) {
+                console.warn('⚠️ Usando mapa padrão');
+                this.createDefaultMap();
             }
-        });
-        
-        // Criar elementos da cena
-        this.createTerrain();
-        this.createSkybox();
-        this.createAmbientElements();
-        this.setupScene();
-    }
 
-    createTerrain() {
-        const size = 1000;
-        const geometry = new THREE.PlaneGeometry(size, size);
-        
-        // Material do terreno melhorado
-        const material = new THREE.MeshStandardMaterial({
-            map: this.generateTerrainTexture(),
-            roughness: 0.8,          // Alta rugosidade para o chão
-            metalness: 0.0,          // Sem metalicidade
-            envMapIntensity: 0.5,    // Baixa reflexão
-            color: 0x90AF50
-        });
-
-        const terrain = new THREE.Mesh(geometry, material);
-        terrain.rotation.x = -Math.PI / 2;
-        terrain.receiveShadow = true;
-        this.scene.add(terrain);
-    }
-
-    generateTerrainTexture() {
-        const canvas = document.createElement('canvas');
-        canvas.width = 1024;
-        canvas.height = 1024;
-        const ctx = canvas.getContext('2d');
-
-        // Cor base (grama de planície)
-        ctx.fillStyle = '#9CB754';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        // Adicionar variações sutis de cor
-        for (let i = 0; i < 50000; i++) {
-            const x = Math.random() * canvas.width;
-            const y = Math.random() * canvas.height;
-            const size = 1 + Math.random() * 2;
-            
-            ctx.fillStyle = Math.random() > 0.5 ? '#8CA744' : '#AAC164';
-            ctx.beginPath();
-            ctx.arc(x, y, size, 0, Math.PI * 2);
-            ctx.fill();
-        }
-
-        const texture = new THREE.CanvasTexture(canvas);
-        texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-        texture.repeat.set(16, 16); // Aumentado para mais detalhes no chão
-        
-        return texture;
-    }
-
-    createSkybox() {
-        // Criar céu simples usando um gradiente
-        const verticalFov = 60;
-        const aspect = window.innerWidth / window.innerHeight;
-        const height = 2000;
-        const skyGeometry = new THREE.SphereGeometry(height, 32, 32);
-        
-        const uniforms = {
-            topColor: { value: new THREE.Color(0x0077ff) },
-            bottomColor: { value: new THREE.Color(0xffffff) },
-            offset: { value: height * 0.25 },
-            exponent: { value: 0.6 }
-        };
-
-        const skyMaterial = new THREE.ShaderMaterial({
-            vertexShader: `
-                varying vec3 vWorldPosition;
-                void main() {
-                    vec4 worldPosition = modelMatrix * vec4(position, 1.0);
-                    vWorldPosition = worldPosition.xyz;
-                    gl_Position = projectionMatrix * vec4(position, 1.0);
+            // Configurar câmera com base no tamanho do mapa
+            const gridSize = this.mapGenerator.grid.length;
+            if (this.cameraController) {
+                try {
+                    console.log('📸 Configurando posição inicial da câmera');
+                    this.cameraController.setInitialPosition(gridSize, gridSize);
+                } catch (error) {
+                    console.warn('⚠️ Erro ao posicionar câmera:', error);
+                    // Usar configuração padrão como fallback
+                    this.cameraController.setCameraDefaults(12, 15, Math.PI / 4);
                 }
-            `,
-            fragmentShader: `
-                uniform vec3 topColor;
-                uniform vec3 bottomColor;
-                uniform float offset;
-                uniform float exponent;
-                varying vec3 vWorldPosition;
-                void main() {
-                    float h = normalize(vWorldPosition + offset).y;
-                    gl_FragColor = vec4(mix(bottomColor, topColor, max(pow(h, exponent), 0.0)), 1.0);
-                }
-            `,
-            uniforms: uniforms,
-            side: THREE.BackSide
-        });
+            }
 
-        const sky = new THREE.Mesh(skyGeometry, skyMaterial);
-        this.scene.add(sky);
-    }
+            // Aplicar tema com câmera
+            const theme = this.themeManager.createTheme('scifi');
+            if (theme) {
+                theme.camera = this.camera; // Passar câmera diretamente
+                await theme.generateFromGrid(this.mapGenerator.grid);
+            }
 
-    createAmbientElements() {
-        // Reduzir quantidade de árvores e espalhar mais
-        for (let i = 0; i < 30; i++) {
-            const tree = this.createTree();
-            const x = (Math.random() - 0.5) * 900;
-            const z = (Math.random() - 0.5) * 900;
-            tree.position.set(x, 0, z); // Altura fixa em 0
-            
-            const scale = 0.5 + Math.random() * 0.5;
-            tree.scale.set(scale, scale, scale);
-            
-            this.scene.add(tree);
+            return true;
+        } catch (error) {
+            console.error('❌ Erro ao configurar mapa:', error);
+            return false;
         }
     }
 
-    createTree() {
-        const group = new THREE.Group();
-
-        // Tronco com material melhorado
-        const trunkGeometry = new THREE.CylinderGeometry(1, 1.5, 8, 8);
-        const trunkMaterial = new THREE.MeshStandardMaterial({ 
-            color: 0x4b3621,
-            roughness: 0.7,          // Ajustar rugosidade
-            metalness: 0.1,          // Baixa metalicidade
-            envMapIntensity: 1.0     // Reflexão moderada
-        });
-        const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
-        trunk.castShadow = true;
-        trunk.receiveShadow = true;
-        group.add(trunk);
-
-        // Copa da árvore com material melhorado
-        const leavesGeometry = new THREE.ConeGeometry(5, 10, 8);
-        const leavesMaterial = new THREE.MeshStandardMaterial({ 
-            color: 0x005500,
-            roughness: 0.6,          // Ajustar rugosidade
-            metalness: 0.1,          // Baixa metalicidade
-            envMapIntensity: 1.0     // Reflexão moderada
-        });
-        const leaves = new THREE.Mesh(leavesGeometry, leavesMaterial);
-        leaves.position.y = 8;
-        leaves.castShadow = true;
-        leaves.receiveShadow = true;
-        group.add(leaves);
-
-        return group;
+    createDefaultMap() {
+        // Criar grid básico 5x5
+        this.mapGenerator = new MapGenerator();
+        this.mapGenerator.grid = Array(5).fill(null).map(() => 
+            Array(5).fill(null).map(() => ({ type: 'room' }))
+        );
+        // Definir célula central como hub
+        this.mapGenerator.grid[2][2] = { type: 'hub' };
     }
 
-    setupScene() {
-        // Adicionar luz ambiente
-        const ambientLight = new THREE.AmbientLight(0x404040, 1);
-        this.scene.add(ambientLight);
+    async setupSceneWithMap(theme) {
+        if (!this.mapGenerator?.grid) return;
 
-        // Adicionar luz direcional
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-        directionalLight.position.set(5, 5, 5);
-        this.scene.add(directionalLight);
+        try {
+            // Configurar câmera com tratamento de erro
+            try {
+                this.cameraController.setInitialPosition(
+                    this.mapGenerator.grid[0].length,
+                    this.mapGenerator.grid.length
+                );
+            } catch (error) {
+                console.warn('⚠️ Erro ao posicionar câmera:', error);
+            }
 
-        // Adicionar plano do chão
-        const groundGeometry = new THREE.PlaneGeometry(100, 100);
-        const groundMaterial = new THREE.MeshStandardMaterial({ 
-            color: 0x333333,
-            roughness: 0.8,
-            metalness: 0.2
-        });
-        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+            // Aplicar tema
+            if (this.themeManager) {
+                try {
+                    await this.themeManager.applyTheme(theme, this.mapGenerator.grid);
+                } catch (error) {
+                    console.warn('⚠️ Erro ao aplicar tema:', error);
+                }
+            }
+        } catch (error) {
+            console.error('❌ Erro ao configurar cena:', error);
+        }
+    }
+
+    async setupBasicScene() {
+        // Limpar cena primeiro
+        while(this.scene.children.length > 0) {
+            const obj = this.scene.children[0];
+            this.scene.remove(obj);
+        }
+
+        // Setup básico garantido
+        const ground = new THREE.Mesh(
+            new THREE.PlaneGeometry(1000, 1000),
+            new THREE.MeshStandardMaterial({ 
+                color: 0x333333,
+                side: THREE.DoubleSide,
+                roughness: 0.8,
+                metalness: 0.2
+            })
+        );
         ground.rotation.x = -Math.PI / 2;
+        ground.position.y = -0.1;
         ground.receiveShadow = true;
         this.scene.add(ground);
+
+        // Luzes básicas
+        this.scene.add(new THREE.AmbientLight(0x404040, 0.5));
+        
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+        dirLight.position.set(10, 10, 10);
+        dirLight.castShadow = true;
+        this.scene.add(dirLight);
+
+        // Configurar câmera na posição inicial segura
+        this.cameraController.setCameraDefaults(20, 30, Math.PI / 4);
+        
+        return true;
     }
 
     update() {
-        // Atualizar posição da câmera baseada no personagem
-        if (this.characterModel) {
-            this.cameraController.update(this.characterModel.position);
+        // Atualizar câmera primeiro
+        if (this.cameraController) {
+            this.cameraController.update();
         }
-        // Atualizar posição da câmera baseada no personagem
-        if (this.character && this.character.character3D) {
-            const position = this.character.character3D.position;
-            this.camera.lookAt(position);
+
+        // Depois atualizar o resto da cena
+        super.update();
+
+        try {
+            // Verificar se themeManager e currentTheme existem
+            if (this.themeManager?.currentTheme?.update) {
+                this.themeManager.currentTheme.update();
+            }
+
+        } catch (error) {
+            console.warn('Aviso: Erro ao atualizar cena:', error);
         }
+
+        return true;
     }
 
     updateCharacterModel(character) {
+        if (!character) return false;
+
         try {
+            // Remover modelo anterior
             if (this.characterModel) {
                 this.scene.remove(this.characterModel);
             }
 
+            // Criar e posicionar novo modelo
             this.characterModel = character.create3DModel();
-            if (!this.characterModel) {
-                throw new Error('Falha ao criar modelo 3D do personagem');
+            const hubPos = this.findHubCenter();
+            const cellSize = 4;
+
+            this.characterModel.position.set(
+                hubPos.x * cellSize,
+                0.5,
+                hubPos.z * cellSize
+            );
+
+            // Adicionar à cena
+            this.scene.add(this.characterModel);
+
+            // Configurar câmera para seguir personagem
+            if (this.cameraController) {
+                console.log('🎯 Configurando câmera para seguir personagem');
+                this.cameraController.setFollowTarget(this.characterModel);
             }
 
-            // Posicionar o personagem um pouco acima do terreno
-            this.characterModel.position.y = 2;
-            this.scene.add(this.characterModel);
-            console.log('Modelo do personagem adicionado à cena');
-            
+            return true;
         } catch (error) {
-            console.error('Erro ao atualizar modelo do personagem:', error);
-            throw error;
+            console.error('❌ Erro ao atualizar personagem:', error);
+            return false;
         }
-        if (this.character) {
-            this.scene.remove(this.character);
+    }
+
+    findHubCenter() {
+        if (!this.mapGenerator?.grid) {
+            console.warn('⚠️ Grid não encontrado, usando posição padrão');
+            return { x: 0, z: 0 };
         }
-        this.character = character;
-        if (character.character3D) {
-            this.scene.add(character.character3D);
+
+        try {
+            // Procurar pela sala hub
+            for (let z = 0; z < this.mapGenerator.grid.length; z++) {
+                for (let x = 0; x < this.mapGenerator.grid[z].length; x++) {
+                    const cell = this.mapGenerator.grid[z][x];
+                    if (cell && cell.type === 'hub') {
+                        // Retornar o centro exato da célula
+                        return {
+                            x: x + 0.5, // Adicionar 0.5 para centralizar na célula
+                            z: z + 0.5
+                        };
+                    }
+                }
+            }
+
+            // Se não encontrar o hub, usar centro do grid
+            const centerX = Math.floor(this.mapGenerator.grid[0].length / 2);
+            const centerZ = Math.floor(this.mapGenerator.grid.length / 2);
+            return { x: centerX + 0.5, z: centerZ + 0.5 }; // Adicionar 0.5 para centralizar
+
+        } catch (error) {
+            console.warn('⚠️ Erro ao encontrar centro do hub:', error);
+            return { x: 0, z: 0 };
+        }
+    }
+
+    setTheme(themeName) {
+        this.currentTheme = themeName;
+        if (this.mapGenerator && this.camera) {
+            console.log('🎨 Aplicando tema:', themeName);
+            this.themeManager.applyTheme(themeName, this.mapGenerator.grid);
+        }
+    }
+
+    setMapGenerator(mapGenerator) {
+        this.mapGenerator = mapGenerator;
+        // Aplicar tema se já estiver definido
+        if (this.currentTheme) {
+            this.themeManager.applyTheme(this.currentTheme, this.mapGenerator.grid);
         }
     }
 }

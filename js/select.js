@@ -161,25 +161,36 @@ class CharacterSelector {
     }
 
     selectCharacter(character) {
-        this.selectedCharacter = character;
-        this.stateManager.setCurrentCharacter(character);
-        
-        // Atualizar UI
-        document.querySelectorAll('.character-option').forEach(el => 
-            el.classList.toggle('selected', el.querySelector('h3').textContent === character.name)
-        );
+        try {
+            console.log('🎮 Selecionando personagem:', character.name);
+            
+            this.selectedCharacter = character;
+            
+            // Garantir que o personagem seja salvo no state e persistido
+            this.stateManager.setCurrentCharacter(character);
+            this.stateManager.saveState();
+            
+            // Atualizar UI
+            document.querySelectorAll('.character-option').forEach(el => 
+                el.classList.toggle('selected', el.querySelector('h3').textContent === character.name)
+            );
 
-        if (this.previewController) {
-            this.previewController.updateCharacter(character);
+            if (this.previewController) {
+                this.previewController.updateCharacter(character);
+            }
+
+            // Habilitar botão de play
+            const playButton = document.getElementById('playButton');
+            if (playButton) {
+                playButton.disabled = false;
+            }
+
+            console.log('✅ Personagem salvo no state:', character);
+            
+        } catch (error) {
+            console.error('❌ Erro ao selecionar personagem:', error);
+            throw error;
         }
-
-        // Habilitar botão de play
-        const playButton = document.getElementById('playButton');
-        if (playButton) {
-            playButton.disabled = false;
-        }
-
-        console.log('🎮 Personagem selecionado:', character.name);
     }
 
     setupEventListeners() {

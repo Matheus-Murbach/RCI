@@ -1379,3 +1379,46 @@ canvas {
     font-size: 14px;
     line-height: 1.2;
 }
+
+/* Estilos para seleção de temas */
+.theme-section {
+    margin-top: 2rem;
+    transition: all 0.3s ease;
+}
+
+.theme-section.hidden {
+    display: none;
+    opacity: 0;
+}
+
+.theme-section.visible {
+    display: block;
+    opacity: 1;
+}
+
+.theme-options {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.theme-card {
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid var(--color-rci-Azul1);
+    border-radius: 8px;
+    padding: 1.5rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.theme-card:hover:not(.disabled) {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+.theme-card.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}

@@ -2,13 +2,13 @@ import { MapCell } from './mapCell.js';
 import { RoomStructure } from './roomStructure.js';
 
 export class MapGenerator {
-    constructor(width = 100, height = 100) {
-        this.width = width;
-        this.height = height;
+    constructor() {
+        this.width = 64;
+        this.height = 64;
         this.grid = [];
         this.structures = [];
         this.initGrid();
-        this.minStructures = 60;
+                this.minStructures = 60;
         this.maxAttempts = 10;
     }
 
@@ -28,7 +28,7 @@ export class MapGenerator {
 
         while (!success && attempts < this.maxAttempts) {
             attempts++;
-            console.log(`Tentativa ${attempts} de gerar mapa...`);
+            console.group(`🎲 Tentativa ${attempts} de ${this.maxAttempts}...`);
             
             // Limpar estruturas anteriores
             this.structures = [];
@@ -39,7 +39,7 @@ export class MapGenerator {
 
         if (!success) {
             console.log('❌ Falha ao gerar mapa após', this.maxAttempts, 'tentativas');
-        }
+    }
     }
 
     tryGenerateMap() {
@@ -255,8 +255,8 @@ export class MapGenerator {
     }
 
     createRoom(corridor, direction) {
-        const width = 3 + Math.floor(Math.random() * 3); // 3-5 largura
-        const height = 3 + Math.floor(Math.random() * 3); // 3-5 altura
+        const width = 3 + Math.floor(Math.random() * 3); 
+        const height = 3 + Math.floor(Math.random() * 3); 
         let x, y;
 
         switch(direction) {

@@ -19,6 +19,7 @@ export class RenderSystem {
         this.defaultBackground = new THREE.Color(0x000000);
         this.composer = null;
         this.effects = new Map();
+        this.animationCallback = null;
     }
 
     static getInstance() {
@@ -104,11 +105,20 @@ export class RenderSystem {
         this.activeScene = scene;
     }
 
+    setAnimationCallback(callback) {
+        this.animationCallback = callback;
+    }
+
     animate() {
         if (this.animationFrame) return; // Evitar múltiplas animações
         
         const animate = () => {
             this.animationFrame = requestAnimationFrame(animate);
+
+            // Executar callback personalizado
+            if (this.animationCallback) {
+                this.animationCallback();
+            }
 
             // Atualizar cena ativa
             if (this.activeScene) {

@@ -6,22 +6,51 @@
     <title>RCI Tabletop - Jogo</title>
     <link rel="icon" type="image/x-icon" href="../pages/dado.ico">
     <link rel="stylesheet" href="../css/styles.css">
+    <link rel="stylesheet" href="../css/game.css">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    
+    <!-- Adicionar importmap antes dos scripts -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.157.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.157.0/examples/jsm/"
+            }
+        }
+    </script>
 </head>
 <body>
     <div class="screen">
         <div class="game-container">
-            <div id="gameArea">
-                <pre id="mapDisplay"></pre>
+            <!-- Canvas para renderização 3D -->
+            <canvas id="gameCanvas"></canvas>
+            
+            <!-- UI do jogo -->
+            <div class="game-ui">
+                <div class="ui-top">
+                    <div class="player-info">
+                        <div class="health-bar"></div>
+                        <div class="stamina-bar"></div>
+                    </div>
+                </div>
             </div>
+            
+            <!-- Botão voltar -->
+            <button id="backButton">
+                <span class="material-icons">arrow_back</span>
+                Voltar
+            </button>
         </div>
-        
-        <button id="backButton" class="btn-secondary">
-            <span class="material-icons">arrow_back</span>
-            Voltar
-        </button>
     </div>
 
+    <!-- Garantir que THREE esteja disponível globalmente -->
+    <script type="module">
+        import * as THREE from 'three';
+        window.THREE = THREE;
+    </script>
+
+    <!-- Scripts da aplicação -->
+    <script type="module" src="../js/LODController.js"></script>
     <script type="module" src="../js/game.js"></script>
 </body>
 </html>
