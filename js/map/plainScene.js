@@ -68,6 +68,21 @@ export class PlainScene extends BaseScene {
                 await theme.generateFromGrid(this.mapGenerator.grid);
             }
 
+            // Configurar materiais das paredes para receber sombras
+            this.scene.traverse((object) => {
+                if (object.isMesh) {
+                    object.castShadow = true;
+                    object.receiveShadow = true;
+                }
+            });
+
+            // Ajustar configurações de sombra do renderer
+            const renderer = this.renderSystem.getRenderer();
+            if (renderer) {
+                renderer.shadowMap.enabled = true;
+                renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            }
+
             return true;
         } catch (error) {
             console.error('❌ Erro ao configurar mapa:', error);
@@ -123,10 +138,10 @@ export class PlainScene extends BaseScene {
         const ground = new THREE.Mesh(
             new THREE.PlaneGeometry(1000, 1000),
             new THREE.MeshStandardMaterial({ 
-                color: 0x333333,
+                color: 0x555555, // Clareado um pouco
                 side: THREE.DoubleSide,
-                roughness: 0.8,
-                metalness: 0.2
+                roughness: 0.7,  // Reduzido para refletir mais luz
+                metalness: 0.3   // Aumentado levemente
             })
         );
         ground.rotation.x = -Math.PI / 2;
@@ -134,16 +149,7 @@ export class PlainScene extends BaseScene {
         ground.receiveShadow = true;
         this.scene.add(ground);
 
-        // Luzes básicas
-        this.scene.add(new THREE.AmbientLight(0x404040, 0.5));
-        
-        const dirLight = new THREE.DirectionalLight(0xffffff, 1);
-        dirLight.position.set(10, 10, 10);
-        dirLight.castShadow = true;
-        this.scene.add(dirLight);
-
-        // Configurar câmera na posição inicial segura
-        this.cameraController.setCameraDefaults(20, 30, Math.PI / 4);
+        // Remover luzes básicas e deixar só a do personagem
         
         return true;
     }
@@ -158,7 +164,7 @@ export class PlainScene extends BaseScene {
         super.update();
 
         try {
-            // Verificar se themeManager e currentTheme existem
+            // Verificar se themeManager e currentTheme existem e atualizar
             if (this.themeManager?.currentTheme?.update) {
                 this.themeManager.currentTheme.update();
             }

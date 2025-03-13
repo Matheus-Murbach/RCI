@@ -102,7 +102,8 @@ export class Character {
     createHead() {
         console.log('🎭 [CHARACTER] Criando cabeça com expressão:', 
             this.faceExpression);
-        const headGeometry = new THREE.SphereGeometry(0.5, 32, 32);
+        // Criando geometria com UV mapping otimizado para frente da cabeça
+        const headGeometry = new THREE.SphereGeometry(0.5, 32, 32, 0, Math.PI * 2, 0, Math.PI);
         const canvas = document.createElement('canvas');
         canvas.width = 1024;
         canvas.height = 512;
@@ -112,19 +113,19 @@ export class Character {
         ctx.fillStyle = this.skinColor;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // Configuração melhorada do texto
+        // Configuração do texto centralizado na área frontal
         ctx.fillStyle = this.accentColor;
         ctx.font = "bold 128px monospace"; // Fonte maior
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         
-        // Desenhar expressão
-        ctx.fillText(this.faceExpression, canvas.width / 2, canvas.height / 2);
+        // Posicionando a expressão na área que será mapeada na frente da esfera
+        ctx.fillText(this.faceExpression, canvas.width /2, canvas.height /2);
 
         const texture = new THREE.CanvasTexture(canvas);
         texture.anisotropy = 16; // Melhorar qualidade da textura
         texture.needsUpdate = true;
-
+        
         const headMaterial = new THREE.MeshStandardMaterial({
             map: texture,
             roughness: 0.6,
@@ -132,8 +133,12 @@ export class Character {
             envMapIntensity: 1.0
         });
 
-        console.log('🎭 [CHARACTER] Expressão desenhada na textura:',  this.faceExpression);
-        return new THREE.Mesh(headGeometry, headMaterial);
+        const head = new THREE.Mesh(headGeometry, headMaterial);
+        
+        // Rotacionando a cabeça para que a face fique na frente
+        head.rotation.y = Math.PI;
+
+        return head;
     }
 
     equipItem(item) {
@@ -168,9 +173,9 @@ export class Character {
 
         // Corpo com dimensões corretas
         const bodyGeometry = new THREE.CylinderGeometry(
-            this.topRadius || CHARACTER_CONFIG.defaults.topRadius,
-            this.bottomRadius || CHARACTER_CONFIG.defaults.bottomRadius,
-            2,
+            (this.topRadius || CHARACTER_CONFIG.defaults.topRadius) * 0.7, 
+            (this.bottomRadius || CHARACTER_CONFIG.defaults.bottomRadius) * 0.7, 
+            1.75, 
             32
         );
         
@@ -182,14 +187,15 @@ export class Character {
         });
         
         const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
-        body.position.y = 0;
+        body.position.y = 0.7; 
         body.castShadow = true;
         body.receiveShadow = true;
         group.add(body);
 
         // Cabeça com textura facial
         const head = this.createHead();
-        head.position.y = 1.5; // Ajustado para posição correta
+        head.scale.setScalar(0.7); 
+        head.position.y = 1.75; 
         group.add(head);
 
         this.character3D = group;
@@ -218,9 +224,9 @@ export class Character {
         // Atualizar corpo
         body.material.color.setStyle(this.mainColor);
         const newGeometry = new THREE.CylinderGeometry(
-            this.topRadius,
-            this.bottomRadius,
-            2,
+            this.topRadius * 0.7, // Reduzido pela metade
+            this.bottomRadius * 0.7, // Reduzido pela metade
+            1.4, // Altura reduzida de 2 para 1
             32
         );
         body.geometry.dispose();
@@ -264,7 +270,6 @@ export class Character {
         
         this.stateManager.setCharacters(characters);
         if (currentCharacter?.name === this.name) {
-            this.stateManager.setCurrentCharacter(this);
         }
     }
 

@@ -19,9 +19,9 @@ export class CameraControllerGame extends BaseCameraController {
             
             // Suavização
             smoothness: {
-                position: 0.1,  // Suavização do movimento
-                rotation: 0.05,  // Suavização da rotação
-                zoom: 0.1       // Suavização do zoom
+                position: 0.04,  // Mais suave
+                rotation: 0.03,  // Mais suave
+                zoom: 0.05       // Mais suave
             },
 
             // Limites
@@ -44,9 +44,9 @@ export class CameraControllerGame extends BaseCameraController {
             // Configurações do offset do mouse para isométrico
             mouseOffset: {
                 enabled: true,
-                maxOffset: 25,     // Distância máxima do offset (reduzida para isométrico)
-                strength: 0.2,    // Força do efeito (0-1)
-                smoothness: 0.05  // Suavização do movimento (mais suave para isométrico)
+                maxOffset: 30,     // Reduzido
+                strength: 0.15,    // Reduzido
+                smoothness: 0.03  // Mais suave
             },
 
             // Debug

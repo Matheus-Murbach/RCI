@@ -6,30 +6,19 @@ export class ScifiDungeonGenerator {
     constructor(scene) {
         this.scene = scene;
         this.materialSystem = MaterialSystem.getInstance();
-        this.animationFrames = new Set();
-        this.lights = new Set();
-        this.lastUpdate = 0;
         
         this.cellSize = 4;
         this.wallHeight = 4;
-        
-        // Configurações de luz
-        this.lightConfig = {
-            color: 0x66ccff,
-            intensity: 80,     // Aumentado
-            range: 20,        // Aumentado
-            height: 0.8,      
-            spacing: 4,       // Reduzido para mais luzes
-            flickerChance: 0.3,
-            ambient: 50,
-            shadowMapSize: 512,  // Novo: tamanho do shadowMap
-            shadowBias: -0.001   // Novo: bias para sombras mais suaves
-        };
 
-        // Configurações de luz ambiente
+        // Configurações de luz ambiente - aumentada para compensar falta de outras luzes
         this.ambientConfig = {
-            color: 0x404060,    // Azulado suave
-            intensity: 100      // 40% de intensidade base
+            color: 0xffffff,    // Azulado mais claro
+            intensity: 0.3,     // Aumentado de 0.01 para 0.3
+            flickerSpeed: 0.001,
+            flickerIntensity: 0.001,
+            minIntensity: 0.02,  // Aumentado de 0.01 para 0.2
+            maxIntensity: 0.4,  // Aumentado de 0.1 para 0.4
+            lastUpdate: 0
         };
 
         // Criar luz ambiente
@@ -38,54 +27,49 @@ export class ScifiDungeonGenerator {
             this.ambientConfig.intensity
         );
 
-        // Ajustar materiais para melhor interação com luz
+        // Adicionar sistema de flicker
+        this.flickerNoise = [];
+        this.generateFlickerNoise();
+
+        // Ajustar materiais para melhor visibilidade com apenas luz ambiente
         this.materials = {
-            wall: new THREE.MeshStandardMaterial({
-                color: 0x2B4C7E,
-                roughness: 0.8,
-                metalness: 0.2,
-                emissive: 0x000000
-            }),
+            wall: [
+                new THREE.MeshStandardMaterial({
+                    color: 0x4466aa,
+                    roughness: 0.5,  // Reduzido para refletir mais luz
+                    metalness: 0.3,  // Aumentado para mais reflexão
+                    emissive: 0x000000,
+                    side: THREE.FrontSide,
+                    transparent: true,
+                    opacity: 0.25
+                }),
+                new THREE.MeshStandardMaterial({
+                    color: 0x4466aa,
+                    roughness: 0.5,  // Reduzido para refletir mais luz
+                    metalness: 0.3,  // Aumentado para mais reflexão
+                    emissive: 0x112233,
+                    emissiveIntensity: 0.2,
+                    side: THREE.BackSide
+                })
+            ],
             floor: new THREE.MeshStandardMaterial({
-                color: 0x1A1A1A,
-                roughness: 0.9,
-                metalness: 0.1,
-                emissive: 0x000000
+                color: 0x333344,
+                roughness: 0.4,     // Reduzido para mais reflexão
+                metalness: 0.5,     // Aumentado para mais brilho
+                emissive: 0x111122,
+                emissiveIntensity: 0.1
             }),
             ceiling: new THREE.MeshStandardMaterial({
-                color: 0x1C2833,
-                roughness: 0.7,
-                metalness: 0.2,
-                emissive: 0x000000
+                color: 0x333344,
+                roughness: 0.4,     // Reduzido para mais reflexão
+                metalness: 0.5,     // Aumentado para mais brilho
+                emissive: 0x111122,
+                emissiveIntensity: 0.1
             })
         };
 
-        // Adicionar material para debug das luzes
-        this.debugMaterial = new THREE.MeshBasicMaterial({
-            color: 0xff0000,
-            wireframe: true
-        });
-
-        // Adicionar materiais para debug visual
-        this.debugMaterials = {
-            lightSource: new THREE.MeshBasicMaterial({
-                color: 0xff0000, // Vermelho mais visível
-                transparent: true,
-                opacity: 0.8,    // Aumentar opacidade
-                depthTest: false // Garantir que fique visível
-            }),
-            lightRange: new THREE.MeshBasicMaterial({
-                color: 0x00ff00, // Verde mais visível
-                wireframe: true,
-                transparent: true,
-                opacity: 0.3,    // Aumentar opacidade
-                depthTest: false
-            })
-        };
-
-        this.debugMode = true; // Novo: ativar debug por padrão
-
-        this.findCamera();
+        // Remover sistemas de luz desnecessários
+        this.debugMode = false;
     }
 
     findCamera() {
@@ -149,15 +133,15 @@ export class ScifiDungeonGenerator {
 
         try {
             // Configurar cena
-            this.scene.background = new THREE.Color(0x000010);
+            this.scene.background = new THREE.Color(0x000000);
             
-            // Adicionar luz ambiente
+            // Adicionar apenas luz ambiente
             this.scene.add(this.ambientLight);
             
             // Criar estrutura básica
             this.createBaseStructure(grid);
             
-            // Criar névoa
+            // Configurar névoa mais clara e distante
             this.createFog();
             
             return true;
@@ -183,48 +167,6 @@ export class ScifiDungeonGenerator {
                 this.createFloorAndWalls(cell, pos, x, z, grid, cellSize, wallHeight);
             });
         });
-
-        // Novo sistema de posicionamento de luzes
-        this.placeLights(grid, cellSize, wallHeight);
-    }
-
-    placeLights(grid, cellSize, wallHeight) {
-        const spacing = this.lightConfig.spacing;
-        
-        for (let z = 0; z < grid.length; z++) {
-            for (let x = 0; x < grid[z].length; x++) {
-                // Colocar luzes apenas em intervalos regulares onde há células válidas
-                if ((x % spacing === 0 || z % spacing === 0) && 
-                    this.isValidCell(grid, x, z)) {
-                    
-                    // Verificar células adjacentes para melhor posicionamento
-                    const hasNeighbors = this.countNeighbors(grid, x, z) >= 2;
-                    
-                    if (hasNeighbors) {
-                        const pos = new THREE.Vector3(
-                            x * cellSize + cellSize/2,
-                            0,
-                            z * cellSize + cellSize/2
-                        );
-                        this.createLight(pos, wallHeight);
-                    }
-                }
-            }
-        }
-    }
-
-    countNeighbors(grid, x, z) {
-        const dirs = [[0,1], [1,0], [0,-1], [-1,0]];
-        return dirs.reduce((count, [dx, dz]) => {
-            return count + (this.isValidCell(grid, x + dx, z + dz) ? 1 : 0);
-        }, 0);
-    }
-
-    isValidCell(grid, x, z) {
-        return grid[z] && 
-               grid[z][x] && 
-               grid[z][x].type !== 'empty' && 
-               grid[z][x].type !== undefined;
     }
 
     createFloorAndWalls(cell, pos, x, z, grid, cellSize, wallHeight) {
@@ -237,234 +179,101 @@ export class ScifiDungeonGenerator {
         floor.position.copy(pos);
         this.scene.add(floor);
 
-        // Criar paredes
-        if (z === 0 || !grid[z-1] || grid[z-1][x].type === 'empty') {
-            const wallNorth = new THREE.Mesh(
-                new THREE.BoxGeometry(cellSize, wallHeight, 0.2),
-                this.materials.wall
+        // Função auxiliar para criar parede dupla
+        const createDualWall = (position, rotation) => {
+            // Parede externa
+            const outerWall = new THREE.Mesh(
+                new THREE.PlaneGeometry(cellSize, wallHeight),
+                this.materials.wall[0]
             );
-            wallNorth.position.copy(pos).add(new THREE.Vector3(0, wallHeight/2, -cellSize/2));
-            this.scene.add(wallNorth);
+            outerWall.position.copy(position);
+            outerWall.rotation.y = rotation;
+            outerWall.userData.type = 'wall'; // Adicionar tipo
+            
+            // Parede interna
+            const innerWall = new THREE.Mesh(
+                new THREE.PlaneGeometry(cellSize, wallHeight),
+                this.materials.wall[1]
+            );
+            innerWall.position.copy(position);
+            innerWall.rotation.y = rotation;
+            innerWall.userData.type = 'wall'; // Adicionar tipo
+            
+            this.scene.add(outerWall);
+            this.scene.add(innerWall);
+        };
+
+        // Criar paredes como planos duplos
+        if (z === 0 || !grid[z-1] || grid[z-1][x].type === 'empty') {
+            createDualWall(
+                pos.clone().add(new THREE.Vector3(0, wallHeight/2, -cellSize/2)),
+                Math.PI
+            );
         }
 
         if (z === grid.length-1 || !grid[z+1] || grid[z+1][x].type === 'empty') {
-            const wallSouth = new THREE.Mesh(
-                new THREE.BoxGeometry(cellSize, wallHeight, 0.2),
-                this.materials.wall
+            createDualWall(
+                pos.clone().add(new THREE.Vector3(0, wallHeight/2, cellSize/2)),
+                0
             );
-            wallSouth.position.copy(pos).add(new THREE.Vector3(0, wallHeight/2, cellSize/2));
-            this.scene.add(wallSouth);
         }
 
         if (x === 0 || !grid[z][x-1] || grid[z][x-1].type === 'empty') {
-            const wallWest = new THREE.Mesh(
-                new THREE.BoxGeometry(0.2, wallHeight, cellSize),
-                this.materials.wall
+            createDualWall(
+                pos.clone().add(new THREE.Vector3(-cellSize/2, wallHeight/2, 0)),
+                -Math.PI/2
             );
-            wallWest.position.copy(pos).add(new THREE.Vector3(-cellSize/2, wallHeight/2, 0));
-            this.scene.add(wallWest);
         }
 
         if (x === grid[z].length-1 || !grid[z][x+1] || grid[z][x+1].type === 'empty') {
-            const wallEast = new THREE.Mesh(
-                new THREE.BoxGeometry(0.2, wallHeight, cellSize),
-                this.materials.wall
+            createDualWall(
+                pos.clone().add(new THREE.Vector3(cellSize/2, wallHeight/2, 0)),
+                Math.PI/2
             );
-            wallEast.position.copy(pos).add(new THREE.Vector3(cellSize/2, wallHeight/2, 0));
-            this.scene.add(wallEast);
         }
     }
 
-    getLightState() {
-        const rand = Math.random();
-        // 40% perfect | 40% failing | 20% broken
-        if (rand > 0.8) return 'broken';
-        if (rand > 0.4) return 'failing';
-        return 'perfect';
+    createFog() {
+        // Ajustar névoa para ser menos densa e mais clara
+        const fog = new THREE.Fog(0x000033, 10, 100); // Aumentado start e end, cor mais clara
+        this.scene.fog = fog;
     }
 
-    createLight(position, wallHeight) {
-        if (!this.scene || !this.lodController) return;
-
-        const chunkX = Math.floor(position.x / this.lodController.chunkSize);
-        const chunkZ = Math.floor(position.z / this.lodController.chunkSize);
-        
-        const chunk = this.lodController.getChunk(chunkX, chunkZ);
-        if (chunk && chunk.lights.size >= this.lodController.maxLightsPerChunk) return;
-
-        // Criar luz com sombras
-        const light = new THREE.PointLight(
-            this.lightConfig.color,
-            this.lightConfig.intensity,
-            this.lightConfig.range,
-            2  // Decay quadrático
-        );
-
-        light.position.copy(position).add(
-            new THREE.Vector3(0, wallHeight * this.lightConfig.height, 0)
-        );
-
-        // Configurar sombras
-        light.castShadow = true;
-        light.shadow.mapSize.width = this.lightConfig.shadowMapSize;
-        light.shadow.mapSize.height = this.lightConfig.shadowMapSize;
-        light.shadow.bias = this.lightConfig.shadowBias;
-
-        // Otimizar near/far plane
-        light.shadow.camera.near = 0.1;
-        light.shadow.camera.far = this.lightConfig.range;
-
-        // Configurar comportamento da luz
-        light.userData = {
-            flicker: Math.random() < this.lightConfig.flickerChance,
-            baseIntensity: this.lightConfig.intensity,
-            flickerSpeed: 0.1 + Math.random() * 0.2,
-            minIntensity: this.lightConfig.intensity * 0.7,  // Aumentado mínimo
-            maxIntensity: this.lightConfig.intensity * 1.3,  // Aumentado máximo
-            flickerPhase: Math.random() * Math.PI * 2  // Novo: fase aleatória
-        };
-
-        this.scene.add(light);
-        this.lights.add(light);
-        this.lodController.addLight(light, chunkX, chunkZ);
-
-        // Sempre criar os visuais de debug, mas controlar visibilidade
-        this.createDebugVisuals(light, position);
-
-        return light;
+    generateFlickerNoise() {
+        // Gerar 1000 valores de ruído para criar um padrão de flickering
+        for (let i = 0; i < 1000; i++) {
+            this.flickerNoise.push(Math.random());
+        }
     }
 
     update() {
-        try {
-            const time = Date.now() * 0.001;
-            
-            this.lights.forEach(light => {
-                if (!light?.userData?.flicker) return;
-
-                // Sistema de flicker melhorado
-                const flicker = Math.sin(
-                    (time * light.userData.flickerSpeed) + 
-                    light.userData.flickerPhase
-                ) * 0.3;
-
-                const noise = (Math.random() - 0.5) * 0.1;  // Adiciona ruído sutil
-                
-                light.intensity = THREE.MathUtils.clamp(
-                    light.userData.baseIntensity * (1.0 + flicker + noise),
-                    light.userData.minIntensity,
-                    light.userData.maxIntensity
-                );
-            });
-
-            return true;
-        } catch (error) {
-            console.error('❌ Erro na atualização das luzes:', error);
-            return false;
-        }
-    }
-
-    // Novo método para criar visuais de debug
-    createDebugVisuals(light, position) {
-        // 1. Esfera para marcar posição da luz (maior e mais visível)
-        const lightMarker = new THREE.Mesh(
-            new THREE.SphereGeometry(0.5, 8, 8), // Aumentado tamanho
-            this.debugMaterials.lightSource
-        );
-        lightMarker.position.copy(light.position);
-        lightMarker.userData.isDebugObject = true;
-        lightMarker.visible = this.debugMode;
-        this.scene.add(lightMarker);
-
-        // 2. Círculo no chão mais visível
-        const groundMarker = new THREE.Mesh(
-            new THREE.CircleGeometry(this.lightConfig.range, 32), // Mais segmentos
-            this.debugMaterials.lightRange
-        );
-        groundMarker.rotation.x = -Math.PI / 2;
-        groundMarker.position.set(position.x, 0.05, position.z); // Mais próximo do chão
-        groundMarker.userData.isDebugObject = true;
-        groundMarker.visible = this.debugMode;
-        this.scene.add(groundMarker);
-
-        // 3. Linha de conexão mais grossa
-        const lineGeometry = new THREE.BufferGeometry().setFromPoints([
-            light.position,
-            new THREE.Vector3(position.x, 0.05, position.z)
-        ]);
-        const line = new THREE.Line(
-            lineGeometry,
-            new THREE.LineBasicMaterial({ 
-                color: 0xffff00, 
-                opacity: 0.8, 
-                transparent: true,
-                linewidth: 2 // Linha mais grossa (note que nem todos browsers suportam)
-            })
-        );
-        line.userData.isDebugObject = true;
-        line.visible = this.debugMode;
-        this.scene.add(line);
-
-        return { lightMarker, groundMarker, line };
-    }
-
-    // Novo método para alternar modo debug
-    toggleDebug(enabled) {
-        this.debugMode = enabled;
-        this.scene.traverse(object => {
-            if (object.userData.isDebugObject) {
-                object.visible = enabled;
-            }
-        });
-    }
-
-    // Novo método para ajustar intensidade da luz ambiente
-    setAmbientIntensity(intensity) {
-        this.ambientLight.intensity = intensity;
+        if (!this.ambientLight) return;
+        
+        const time = performance.now() * this.ambientConfig.flickerSpeed;
+        const noiseIndex = Math.floor(time % this.flickerNoise.length);
+        const noise = this.flickerNoise[noiseIndex];
+        
+        // Adicionar variação aleatória ocasional
+        const randomFlicker = Math.random() > 0.95 ? Math.random() * 0.4 : 0;
+        
+        // Calcular nova intensidade
+        const baseIntensity = this.ambientConfig.minIntensity + 
+            (noise * (this.ambientConfig.maxIntensity - this.ambientConfig.minIntensity));
+        
+        // Aplicar flickering
+        this.ambientLight.intensity = baseIntensity + 
+            (Math.sin(time) * this.ambientConfig.flickerIntensity) + randomFlicker;
     }
 
     dispose() {
-        this.animationFrames.forEach(id => cancelAnimationFrame(id));
-        this.animationFrames.clear();
-        
         Object.values(this.materials).forEach(material => {
             if (material.dispose) {
                 material.dispose();
             }
         });
 
-        this.lights.forEach(light => {
-            this.scene.remove(light);
-            light.dispose();
-        });
-        this.lights.clear();
-
-        // Remover luz ambiente
         if (this.ambientLight) {
             this.scene.remove(this.ambientLight);
         }
-
-        // Remover marcadores de debug
-        this.scene.traverse(object => {
-            if (object.userData.isLightMarker) {
-                this.scene.remove(object);
-                if (object.geometry) object.geometry.dispose();
-                if (object.material) object.material.dispose();
-            }
-        });
-
-        // Atualizar remoção de objetos de debug
-        this.scene.traverse(object => {
-            if (object.userData.isDebugObject) {
-                this.scene.remove(object);
-                if (object.geometry) object.geometry.dispose();
-                if (object.material) object.material.dispose();
-            }
-        });
-    }
-
-    createFog() {
-        // Ajustar névoa para ser mais densa e escura
-        const fog = new THREE.Fog(0x000000, 1, 20);
-        this.scene.fog = fog;
     }
 }

@@ -92,8 +92,9 @@ export class CharacterPreviewController {
             this.characterModel = character.create3DModel();
             
             if (this.characterModel) {
-                // Ajustar posição do modelo
-                this.characterModel.position.set(0, -0.5, 0);
+                // Ajustar posição e escala do modelo
+                this.characterModel.position.set(0, 0.2, 0);
+                this.characterModel.scale.setScalar(0.7);
                 this.scene.add(this.characterModel);
                 
                 // Atualizar materiais
