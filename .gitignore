@@ -23,3 +23,6 @@ server/node_modules
 .vscode/
 *.sublime-workspace
 *.sublime-project
+
+#banco de dados
+*.sqlite
