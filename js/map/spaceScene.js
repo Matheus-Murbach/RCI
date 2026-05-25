@@ -32,9 +32,6 @@ export class SpaceScene extends BaseScene {
     }
 
     init() {
-        this.lodController = null;
-        this.initLODController();
-        
         // Ajustar controle de velocidade global
         this.baseSpeed = 0.0005;
         this.timeScale = 1.0;
@@ -81,23 +78,6 @@ export class SpaceScene extends BaseScene {
         } else {
             return baseSpeed * (1 + Math.random()); // 100-200% da velocidade base
         }
-    }
-
-    initLODController() {
-        // Verificar se THREE está disponível
-        if (typeof THREE === 'undefined') {
-            console.error('THREE.js não está carregado ainda');
-            return;
-        }
-
-        // Verificar se LODController está disponível
-        if (typeof LODController === 'undefined') {
-            console.error('LODController não está carregado ainda');
-            return;
-        }
-
-        // Inicializar o LODController
-        this.lodController = new LODController(this.camera);
     }
 
     createStars() {
@@ -570,23 +550,6 @@ export class SpaceScene extends BaseScene {
             eccentricity: data.eccentricity
         };
 
-        // Verificar se LODController está disponível antes de usar
-        if (this.lodController) {
-            this.lodController.addObject(planet, {
-                minScale: 0.3,
-                maxScale: 1.2,
-                minDetail: 0.2,
-                maxDetail: 1.0,
-                customLODLevels: [
-                    { distance: 20, detail: 1.0 },
-                    { distance: 100, detail: 0.75 },
-                    { distance: 200, detail: 0.5 },
-                    { distance: 400, detail: 0.25 },
-                    { distance: 800, detail: 0.1 }
-                ]
-            });
-        }
-
         return planetGroup;
     }
 
@@ -783,11 +746,6 @@ export class SpaceScene extends BaseScene {
             // Rotação própria proporcional à velocidade orbital
             planetGroup.rotation.y += speed * this.timeScale * 2;
         });
-
-        // Verificar se LODController está disponível antes de atualizar
-        if (this.lodController) {
-            this.lodController.update();
-        }
 
         // Atualizar posição das estrelas
         if (this.stars) {

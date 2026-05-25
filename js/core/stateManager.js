@@ -15,39 +15,21 @@ export class StateManager {
             },
             characters: [],
             currentCharacter: null,
-            redirectUrl: null,
-            settings: {
-                graphics: {
-                    quality: 'high',
-                    enableEffects: true
-                },
-                controls: {
-                    cinematicMode: true
-                }
-            }
+            redirectUrl: null
         };
 
         this.listeners = new Map();
         this.initialize();
-
-        // Tentar restaurar estado da sessão
         this.loadState();
-
-        this.gameMode = null;
     }
 
     initialize() {
-        // Inicializar com estado vazio
         if (!this.state) {
             this.state = {
-                user: {id: null, username: null, token: null},
+                user: { id: null, username: null, token: null },
                 characters: [],
                 currentCharacter: null,
-                redirectUrl: null,
-                settings: {
-                    graphics: { quality: 'high', enableEffects: true },
-                    controls: { cinematicMode: true }
-                }
+                redirectUrl: null
             };
         }
     }
@@ -94,31 +76,8 @@ export class StateManager {
         }
     }
 
-    getSettings() {
-        if (!this.state.settings) {
-            this.state.settings = {};
-        }
-        
-        // Carregar tema do localStorage se necessário
-        if (!this.state.settings.theme) {
-            this.state.settings.theme = localStorage.getItem('theme');
-            if (this.state.settings.theme) {
-                this.state.settings.loaded = true;
-            }
-        }
-        
-        return this.state.settings;
-    }
-
     getRedirectUrl() {
         return this.state.redirectUrl;
-    }
-
-    getGameMode() {
-        if (!this.gameMode) {
-            this.gameMode = localStorage.getItem('gameMode');
-        }
-        return this.gameMode;
     }
 
     // Setters com notificação de mudanças
@@ -142,26 +101,9 @@ export class StateManager {
         this.notifyListeners('currentCharacter');
     }
 
-    updateSettings(settings) {
-        this.state.settings = {...this.state.settings, ...settings};
-        
-        // Persistir tema
-        if (settings.theme) {
-            localStorage.setItem('theme', settings.theme);
-        }
-        
-        this.notifyListeners('settings');
-    }
-
     setRedirectUrl(url) {
         this.state.redirectUrl = url;
         this.notifyListeners('redirectUrl');
-    }
-
-    setGameMode(mode) {
-        console.log('🎮 Definindo modo de jogo:', mode);
-        this.gameMode = mode;
-        localStorage.setItem('gameMode', mode);
     }
 
     // Sistema de observadores
@@ -216,20 +158,17 @@ export class StateManager {
         }
     }
 
-    // Limpar estado
     clearState() {
         this.state = {
-            user: {id: null, username: null, token: null},
+            user: { id: null, username: null, token: null },
             characters: [],
             currentCharacter: null,
-            redirectUrl: null,
-            settings: this.state.settings
+            redirectUrl: null
         };
-        sessionStorage.removeItem('appState'); // Limpar estado salvo
+        sessionStorage.removeItem('appState');
         this.notifyListeners('user');
         this.notifyListeners('characters');
         this.notifyListeners('currentCharacter');
         this.notifyListeners('redirectUrl');
-        this.notifyListeners('settings');
     }
 }
